@@ -1,8 +1,15 @@
 #ifndef DEVICES_TIMER_H
 #define DEVICES_TIMER_H
 
+#include <list.h>
 #include <round.h>
 #include <stdint.h>
+
+struct value
+  {
+    int64_t value;
+    struct list_elem elem;
+  };
 
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100
@@ -25,5 +32,8 @@ void timer_udelay (int64_t microseconds);
 void timer_ndelay (int64_t nanoseconds);
 
 void timer_print_stats (void);
+
+void timer_create_alarm (int64_t time);
+void timer_wake (void);
 
 #endif /* devices/timer.h */
