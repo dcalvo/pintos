@@ -102,10 +102,10 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-  timer_create_alarm (start + ticks);
 
   ASSERT (intr_get_level () == INTR_ON);
   lock_acquire (&lock);
+  timer_create_alarm (start + ticks);
   while (timer_elapsed (start) < ticks) 
     cond_wait (&alarm, &lock);
   lock_release (&lock);
