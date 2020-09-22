@@ -612,7 +612,7 @@ priority_check (void)
    This is so we sort from highest priority to lowest, and also ensure 
    that equivalent priority threads are rotated out in round-robin style. */
 bool
-priority_greater_comp (struct list_elem *t1, struct list_elem *t2, void *aux UNUSED)
+priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED)
 {
   struct thread *t1_struct = (list_entry (t1, struct thread, elem));
   struct thread *t2_struct = (list_entry (t2, struct thread, elem));
