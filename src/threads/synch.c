@@ -33,7 +33,7 @@
 #include "threads/thread.h"
 
 bool priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
-void push_waiting_thread (struct list *waiters, struct thread *t);
+void push_waiting_thread (struct list *waiters, struct list_elem *elem);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -355,7 +355,7 @@ priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, v
 
 /* Wrapper for list_insert_ordered to maintain priority queue ordering.*/
 void
-push_waiting_thread (struct list *waiters, struct thread *t)
+push_waiting_thread (struct list *waiters, struct list_elem *elem)
 {
-  list_insert_ordered (waiters, &t->elem, &priority_greater_comp, NULL);
+  list_insert_ordered (waiters, elem, &priority_greater_comp, NULL);
 }
