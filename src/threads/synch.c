@@ -32,7 +32,6 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-bool priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
 void push_waiting_thread (struct list *waiters, struct list_elem *elem);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
