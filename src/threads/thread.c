@@ -601,7 +601,7 @@ priority_check (void)
   struct thread *cur = thread_current ();
   struct thread *next = list_entry (list_front (&ready_list), struct thread, elem);
 
-  if (cur->priority < next->priority)
+  if (cur != idle_thread && cur->priority < next->priority) // idle thread will block itself, this would break it
     thread_yield ();
 }
 
