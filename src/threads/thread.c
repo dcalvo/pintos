@@ -249,6 +249,7 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   push_ready_thread(t);
   t->status = THREAD_READY;
+  priority_check ();
   intr_set_level (old_level);
 }
 
@@ -346,7 +347,6 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  list_sort(&ready_list, &priority_greater_comp, NULL);
   priority_check();
 }
 
@@ -626,7 +626,6 @@ void
 push_ready_thread (struct thread *t)
 {
   list_insert_ordered (&ready_list, &t->elem, &priority_greater_comp, NULL);
-  priority_check ();
 }
 
 // list_sort(&ready_list, &priority_less_comp, NULL);
