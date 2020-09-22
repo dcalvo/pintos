@@ -336,3 +336,23 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
 }
+
+/* Compares two thread's priorities for use in list_sort.
+   Take very careful note of the > in the return. list takes a less compare,
+   but we intentionally give it a greater compare.
+   This is so we sort from highest priority to lowest, and also ensure 
+   that equivalent priority threads are rotated out in round-robin style. */
+bool
+priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED)
+{
+  const int t1_priority = (list_entry (t1, struct thread, elem))->priority;
+  const int t2_priority = (list_entry (t2, struct thread, elem))->priority;
+  return t1_priority > t2_priority;
+}
+
+/* Wrapper for list_insert_ordered to maintain priority queue ordering.*/
+void
+push_waiting_thread (struct list *waiters, struct thread *t)
+{
+  list_insert_ordered (&waiters, &t->elem, &priority_greater_comp, NULL);
+}

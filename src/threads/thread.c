@@ -56,7 +56,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* MY DEFINITIONS */
 #define DEPTH_LIMIT 8           /* # of allowed nested priority donations. */
-bool priority_less_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
+bool priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
 void push_ready_thread (struct thread *t);
 
 
@@ -593,27 +593,35 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
+/* Handler for all priority enforcement checks */
 void
 priority_check (void)
 {
-  struct thread *t = thread_current ();
-  int running_priority = t->priority;
+  struct thread *cur = thread_current ();
+  struct thread *next = list_entry (list_front (&ready_list), struct thread, elem);
+
+  if (cur != next)
+    thread_yield ();
 }
 
-/* Compares two thread's priorities for use in list_sort. */
+/* Compares two thread's priorities for use in list_sort.
+   Take very careful note of the > in the return. list takes a less compare,
+   but we intentionally give it a greater compare.
+   This is so we sort from highest priority to lowest, and also ensure 
+   that equivalent priority threads are rotated out in round-robin style. */
 bool
-priority_less_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED)
+priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED)
 {
   const int t1_priority = (list_entry (t1, struct thread, elem))->priority;
   const int t2_priority = (list_entry (t2, struct thread, elem))->priority;
-  return t1_priority < t2_priority;
+  return t1_priority > t2_priority;
 }
 
 /* Wrapper for list_insert_ordered to maintain priority queue ordering.*/
 void
 push_ready_thread (struct thread *t)
 {
-  list_insert_ordered (&ready_list, &t->elem, &priority_less_comp, NULL);
+  list_insert_ordered (&ready_list, &t->elem, &priority_greater_comp, NULL);
 }
 
 // list_sort(&ready_list, &priority_less_comp, NULL);
