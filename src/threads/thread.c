@@ -346,6 +346,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  priority_check();
 }
 
 /* Returns the current thread's priority. */
@@ -600,7 +601,7 @@ priority_check (void)
   struct thread *cur = thread_current ();
   struct thread *next = list_entry (list_front (&ready_list), struct thread, elem);
 
-  if (cur != next)
+  if (cur->priority < next->priority)
     thread_yield ();
 }
 
@@ -622,6 +623,7 @@ void
 push_ready_thread (struct thread *t)
 {
   list_insert_ordered (&ready_list, &t->elem, &priority_greater_comp, NULL);
+  priority_check ();
 }
 
 // list_sort(&ready_list, &priority_less_comp, NULL);
