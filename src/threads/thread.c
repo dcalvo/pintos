@@ -614,8 +614,10 @@ priority_check (void)
 bool
 priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED)
 {
-  const int t1_priority = (list_entry (t1, struct thread, elem))->priority;
-  const int t2_priority = (list_entry (t2, struct thread, elem))->priority;
+  const struct thread *t1_struct = (list_entry (t1, struct thread, elem));
+  const struct thread *t2_struct = (list_entry (t2, struct thread, elem));
+  const int t1_priority = t1_struct->priority;
+  const int t2_priority = t2_struct->priority;
   return t1_priority > t2_priority;
 }
 
