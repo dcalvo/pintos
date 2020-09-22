@@ -599,6 +599,8 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 void
 priority_check (void)
 {
+  if (list_empty(&ready_list))
+    return; // congrats, you have the CPU all to yourself
   struct thread *cur = thread_current ();
   struct thread *next = list_entry (list_front (&ready_list), struct thread, elem);
 
