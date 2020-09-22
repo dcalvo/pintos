@@ -54,6 +54,10 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+/* MY DEFINITIONS */
+#define DEPTH_LIMIT 8           /* # of allowed nested priority donations. */
+bool priority_less_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -70,6 +74,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+void priority_check (void);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -582,3 +587,21 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+void
+priority_check (void)
+{
+  struct thread *t = thread_current ();
+  int running_priority = t->priority;
+}
+
+/* Compares two thread's priorities for use in list_sort */
+bool
+priority_less_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED)
+{
+  const int t1_priority = (list_entry (t1, struct thread, elem))->priority;
+  const int t2_priority = (list_entry (t2, struct thread, elem))->priority;
+  return t1_priority < t2_priority;
+}
+
+// list_sort(&ready_list, &priority_less_comp, NULL);
