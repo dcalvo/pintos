@@ -249,8 +249,8 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   push_ready_thread(t);
   t->status = THREAD_READY;
-  priority_check ();
   intr_set_level (old_level);
+  priority_check ();
 }
 
 /* Returns the name of the running thread. */
