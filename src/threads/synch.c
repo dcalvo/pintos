@@ -32,7 +32,11 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-void push_waiting_thread (struct list *waiters, struct list_elem *elem);
+void sema_push_waiting_thread (struct list *waiters, struct list_elem *elem);
+void cond_push_waiting_thread (struct list *waiters, struct list_elem *elem);
+bool cond_greater_comp (const struct list_elem *s1, const struct list_elem *s2, void *aux UNUSED);
+
+
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -70,7 +74,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      push_waiting_thread (&sema->waiters, &thread_current ()->elem);
+      sema_push_waiting_thread (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }
   sema->value--;
@@ -253,6 +257,7 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+    int priority;                       /* Priority. */
   };
 
 /* Initializes condition variable COND.  A condition variable
@@ -297,7 +302,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  push_waiting_thread (&cond->waiters, &waiter.elem);
+  waiter.priority = thread_current ()->priority;
+  cond_push_waiting_thread (&cond->waiters, &waiter.elem);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -339,9 +345,31 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
-/* Wrapper for list_insert_ordered to maintain priority queue ordering.*/
+/* Wrapper for list_insert_ordered to maintain priority queue ordering into a sempahore.*/
 void
-push_waiting_thread (struct list *waiters, struct list_elem *elem)
+sema_push_waiting_thread (struct list *waiters, struct list_elem *elem)
 {
   list_insert_ordered (waiters, elem, &priority_greater_comp, NULL);
+}
+
+/* Compares two thread's priorities for use in list_sort.
+   Take very careful note of the > in the return. list takes a less compare,
+   but we intentionally give it a greater compare.
+   This is so we sort from highest priority to lowest, and also ensure 
+   that equivalent priority threads are rotated out in round-robin style. */
+bool
+cond_greater_comp (const struct list_elem *s1, const struct list_elem *s2, void *aux UNUSED)
+{
+  struct semaphore_elem *s1_struct = (list_entry (s1, struct semaphore_elem, elem));
+  struct semaphore_elem *s2_struct = (list_entry (s2, struct semaphore_elem, elem));
+  int s1_priority = s1_struct->priority;
+  int s2_priority = s2_struct->priority;
+  return s1_priority > s2_priority;
+}
+
+/* Wrapper for list_insert_ordered to maintain priority queue ordering into a cond.*/
+void
+cond_push_waiting_thread (struct list *waiters, struct list_elem *elem)
+{
+  list_insert_ordered (waiters, elem, &cond_greater_comp, NULL);
 }
