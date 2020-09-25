@@ -197,6 +197,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  lock->priority = 0;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -257,7 +258,7 @@ lock_release (struct lock *lock)
   list_remove(&lock->elem); // remove from thread's list of held locks
   holder_update_priority(lock->holder);
   lock->holder = NULL;
-  lock_update_priority(lock);
+  lock_update_priority(lock); // drop former holder's priority if necessary
   sema_up (&lock->semaphore);
 }
 
@@ -428,7 +429,7 @@ holder_update_priority (struct thread *t)
     {
       list_sort(&t->locks, &lock_greater_comp, NULL);
       int highest_held_priority = list_entry (list_front (&t->locks), struct lock, elem)->priority;
-      if (t->priority < highest_held_priority)
+      if (highest_held_priority >= t->base_priority)
         t->priority = highest_held_priority; 
     }
   else
