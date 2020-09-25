@@ -37,7 +37,6 @@ void cond_push_waiting_thread (struct list *waiters, struct list_elem *elem);
 bool cond_greater_comp (const struct list_elem *s1, const struct list_elem *s2, void *aux UNUSED);
 bool lock_greater_comp (const struct list_elem *l1, const struct list_elem *l2, void *aux UNUSED);
 void lock_update_priority (struct lock *lock);
-void holder_update_priority (struct thread *t);
 
 
 
