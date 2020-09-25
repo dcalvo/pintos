@@ -55,10 +55,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-/* MY DEFINITIONS */
-#define DEPTH_LIMIT 8           /* # of allowed nested priority donations. */
-
-void push_ready_thread (struct thread *t);
+void push_ready_thread (struct thread *t); /* Wrapper for list_insert_ordered. */
 
 
 
