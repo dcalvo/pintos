@@ -83,8 +83,12 @@ sema_down (struct semaphore *sema)
         {
           struct lock *lock = t->requesting;
           ASSERT (&lock->semaphore == sema); // make sure this lock actually owns the sema, no funny business
-          lock_update_priority (lock);
-          holder_update_priority (lock->holder);
+          while (lock != NULL)
+            {
+              lock_update_priority (lock);
+              holder_update_priority (lock->holder);
+              lock = lock->holder->requesting;
+            }
         }
       thread_block ();
     }
