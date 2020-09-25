@@ -373,3 +373,18 @@ cond_push_waiting_thread (struct list *waiters, struct list_elem *elem)
 {
   list_insert_ordered (waiters, elem, &cond_greater_comp, NULL);
 }
+
+bool
+waiter_blocked (struct condition *cond)
+{
+  struct list *s_l = &cond->waiters;
+  if (list_empty (s_l))
+    return false;
+  struct list_elem *s_l_e = list_front (s_l);
+  struct semaphore_elem *s_e = list_entry (s_l_e, struct semaphore_elem, elem);
+  struct semaphore *s = &s_e->semaphore;
+  struct list *t_l = &s->waiters;
+  struct list_elem *t_l_e = list_front (t_l);
+  struct thread *t = list_entry (t_l_e, struct thread, elem);
+  return t->status == THREAD_BLOCKED;
+}

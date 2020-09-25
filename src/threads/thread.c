@@ -223,11 +223,16 @@ thread_create (const char *name, int priority,
 void
 thread_block (void) 
 {
+  enum intr_level old_level;
+
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
 
+  old_level = intr_disable ();
+  timer_wake ();
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
+  intr_set_level (old_level);
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -301,6 +306,7 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
+  timer_wake ();
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
@@ -318,6 +324,7 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
+  timer_wake ();
   if (cur != idle_thread) 
     push_ready_thread(cur);
   cur->status = THREAD_READY;
