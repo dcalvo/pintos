@@ -219,6 +219,7 @@ lock_acquire (struct lock *lock)
   sema_down (&lock->semaphore); // wait for acquiring lock
 
   list_insert_ordered(&thread_current ()->locks, &lock->elem, &lock_greater_comp, NULL); // add lock to held locks
+  lock->holder = thread_current ();
   thread_current ()->requesting = NULL;
 }
 
