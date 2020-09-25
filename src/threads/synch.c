@@ -36,6 +36,8 @@ void sema_push_waiting_thread (struct list *waiters, struct list_elem *elem);
 void cond_push_waiting_thread (struct list *waiters, struct list_elem *elem);
 bool cond_greater_comp (const struct list_elem *s1, const struct list_elem *s2, void *aux UNUSED);
 bool lock_greater_comp (const struct list_elem *l1, const struct list_elem *l2, void *aux UNUSED);
+void lock_update_priority (struct lock *lock);
+void holder_update_priority (struct thread *t);
 
 
 
@@ -414,7 +416,7 @@ lock_update_priority (struct lock *lock)
       lock->priority = list_entry (list_front (&sema->waiters), struct thread, elem)->priority;
     }
   else
-    lock->priority == PRI_MIN; // ensure released locks don't raise priorities
+    lock->priority = PRI_MIN; // ensure released locks don't raise priorities
 }
 
 /* Update lock holder's priority to its highest lock priority (or resets it). */
