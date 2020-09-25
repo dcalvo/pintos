@@ -20,9 +20,6 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* Macro used for fixed point arithmetic. */
-#define F 16384
-
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -352,30 +349,33 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  thread_current ()->nice = nice;
+  /* Recalculate priority here. */
+  thread_yield();
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+ /* Not fully implemented, will add complete calculation for load average later.*/
+ //return CONVERT_FP_TO_NEAR_INT(MULT_INTFP(load_avg, 100));
+ return 0;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
+  /* Not fully implemented, will add complete calculation for recent cpu later.*/
+  //return CONVERT_FP_TO_NEAR_INT(MULT_INTFP(recent_cpu, 100));
   return 0;
 }
 
