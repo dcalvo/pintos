@@ -481,7 +481,9 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->base_priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->locks);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -636,5 +638,3 @@ push_ready_thread (struct thread *t)
 {
   list_insert_ordered (&ready_list, &t->elem, &priority_greater_comp, NULL);
 }
-
-// list_sort(&ready_list, &priority_less_comp, NULL);
