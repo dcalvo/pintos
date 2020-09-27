@@ -181,12 +181,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
        Once per second, the value of recent cpu is calculated for each thread. */
     if (timer_ticks () % TIMER_FREQ == 0) {
         calc_load_avg(); 
-        calc_all_rcpus(); //Not implemented
+        thread_foreach(calc_recent_cpu(), NULL);
       }
     
     /* Priority is recalculated for every thread once every fourth clock tick */
     if (timer_ticks () % 4 == 0) {
-      calc_all_priority(); //Not implemented
+      thread_foreach(calculate_priority_MLFQS(), NULL);
     }
   }
 }
