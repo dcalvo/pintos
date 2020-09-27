@@ -219,9 +219,6 @@ lock_acquire (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
-  if (lock_held_by_current_thread (lock)) {
-    return;
-  }
   ASSERT (!lock_held_by_current_thread (lock));
 
   thread_current ()->requesting = lock; // officially request the lock
