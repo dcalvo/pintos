@@ -109,6 +109,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  load_avg = 0; // set to 0 at boot
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -471,7 +472,7 @@ void calc_load_avg (void)
 
   /* Formula for B3 */
   int part = MULT_FP(DIV_INTFP(CONVERT_INT_TO_FP(59), 60), load_avg);
-  load_avg = ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(part), 60));
+  load_avg = ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(ready_threads), 60));
 }
 
 
