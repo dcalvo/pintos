@@ -59,8 +59,6 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 void push_ready_thread (struct thread *t); /* Wrapper for list_insert_ordered. */
 void calculate_priority_MLFQS (struct thread *t, void *aux UNUSED);
 void bound_thread_priorities (struct thread *t);
-void inc_cpu (void);
-void calc_load_avg (void);
 void calc_recent_cpu (struct thread *t, void *aux UNUSED);
 
 /* If false (default), use round-robin scheduler.

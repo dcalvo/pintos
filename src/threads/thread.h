@@ -146,6 +146,9 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 void calc_all_rcpus (void);
 void calc_all_priority (void);
+void inc_cpu (void);
+void calc_load_avg (void);
+
 
 bool priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
 
