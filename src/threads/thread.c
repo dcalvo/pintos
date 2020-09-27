@@ -441,15 +441,22 @@ void inc_cpu (void) {
     thread_current()->recent_cpu = ADD(thread_current()->recent_cpu, CONVERT_INT_TO_FP(1));
 }
 
-/* Once per second, the value of recent cpu is recalculated using this formula from B3 */
+/* Once per second, the value of recent cpu is recalculated using this formula from B3 */ //(2*load_avg)/(2*load_avg + 1) * recent_cpu + nice,
 void calc_recent_cpu (struct thread *t, void *aux UNUSED)
 {
-  /* Formula from B3 */
+  /* Formula from B3 */ 
   if (t != idle_thread)
   {
-    int eq1 = DIV_FP(MULT_INTFP(load_avg, CONVERT_INT_TO_FP(2)), ADD(MULT_INTFP(load_avg, CONVERT_INT_TO_FP(2)), CONVERT_INT_TO_FP(1)));
-    int eq2 = MULT_FP(eq1, CONVERT_INT_TO_FP(t->recent_cpu));
-    t->recent_cpu = CONVERT_FP_TO_INT(ADD(eq2, CONVERT_INT_TO_FP(t->nice))); 
+    int load_avg_fp = CONVERT_INT_TO_FP (load_avg);
+    int recent_cpu_fp = CONVERT_INT_TO_FP (t->recent_cpu);
+    int nice_fp = CONVERT_INT_TO_FP (t->nice);
+
+    int load_avg_factor_fp = MULT_INTFP (load_avg_fp, 2);
+    int coef = DIV_FP (load_avg_factor_fp, ADD (load_avg_factor_fp, CONVERT_INT_TO_FP(1)));
+    int left = MULT_FP(coef, recent_cpu_fp);
+    int total_fp = ADD (left, nice_fp);
+
+    t->recent_cpu = CONVERT_FP_TO_INT(total_fp);
   }
 }
 
