@@ -452,12 +452,12 @@ void calc_recent_cpu (struct thread *t)
 
 /* Once per second the value of recent cpu is recalculated for each thread */
 void calc_all_rcpus (void) {
-  // I'm thinking to use thread_foreach, but I'm not sure if I should implement it this way
+  thread_foreach(&calc_recent_cpu, NULL);
 }
 
 /* Priority for every thread is recalculated for every fourth clock tick */
 void calc_all_priority (void) {
-  // I'm thinking to use thread_foreach, but I'm not sure if I should implement it this way
+  thread_foreach(&calculate_priority_MLFQS, NULL);
 }
 
 /* Calculating load average*/
