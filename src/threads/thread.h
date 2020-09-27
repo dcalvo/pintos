@@ -94,6 +94,7 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     int nice;                           /* Needed for niceness in mlfqs. */
+    int recent_cpu;                     /* Needed for calculating recent_cpu in mlfqs. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
