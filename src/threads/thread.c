@@ -449,7 +449,7 @@ void calc_recent_cpu (struct thread *t, void *aux UNUSED)
   {
     int eq1 = DIV_FP(MULT_INTFP(load_avg, CONVERT_INT_TO_FP(2)), ADD(MULT_INTFP(load_avg, CONVERT_INT_TO_FP(2)), CONVERT_INT_TO_FP(1)));
     int eq2 = MULT_FP(eq1, CONVERT_INT_TO_FP(t->recent_cpu));
-    t->recent_cpu = ADD(eq2, CONVERT_INT_TO_FP(t->nice));
+    t->recent_cpu = CONVERT_FP_TO_INT(ADD(eq2, CONVERT_INT_TO_FP(t->nice))); 
   }
 }
 
@@ -471,8 +471,8 @@ void calc_load_avg (void)
   if (thread_current() != idle_thread) ready_threads++;
 
   /* Formula for B3 */
-  int part = MULT_FP(DIV_INTFP(CONVERT_INT_TO_FP(59), 60), load_avg);
-  load_avg = ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(ready_threads), 60));
+  int part = MULT_FP(DIV_INTFP(CONVERT_INT_TO_FP(59), 60), CONVERT_INT_TO_FP(load_avg));
+  load_avg = CONVERT_FP_TO_INT(ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(ready_threads), 60)));
 }
 
 
