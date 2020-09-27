@@ -447,13 +447,11 @@ void calc_recent_cpu (struct thread *t, void *aux UNUSED)
   /* Formula from B3 */ 
   if (t != idle_thread)
   {
-    int load_avg_fp = CONVERT_INT_TO_FP (load_avg);
-    int recent_cpu_fp = CONVERT_INT_TO_FP (t->recent_cpu);
     int nice_fp = CONVERT_INT_TO_FP (t->nice);
 
-    int load_avg_factor_fp = MULT_INTFP (load_avg_fp, 2);
+    int load_avg_factor_fp = MULT_INTFP (load_avg, 2);
     int coef = DIV_FP (load_avg_factor_fp, ADD (load_avg_factor_fp, CONVERT_INT_TO_FP(1)));
-    int left = MULT_FP(coef, recent_cpu_fp);
+    int left = MULT_FP(coef, t->recent_cpu);
     int total_fp = ADD (left, nice_fp);
 
     t->recent_cpu = total_fp;
@@ -478,8 +476,8 @@ void calc_load_avg (void)
   if (thread_current() != idle_thread) ready_threads++;
 
   /* Formula for B3 */
-  int part = MULT_FP(DIV_INTFP(CONVERT_INT_TO_FP(59), 60), CONVERT_INT_TO_FP(load_avg));
-  load_avg = CONVERT_FP_TO_INT(ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(ready_threads), 60)));
+  int part = MULT_FP(DIV_INTFP(CONVERT_INT_TO_FP(59), 60), load_avg);
+  load_avg = ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(ready_threads), 60));
 }
 
 
