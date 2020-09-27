@@ -368,6 +368,8 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  if (thread_mlfqs)
+    return;
   struct thread *t = thread_current ();
   t->base_priority = new_priority;
   holder_update_priority(t);
@@ -383,26 +385,21 @@ thread_get_priority (void)
 
 /* Calculates priority for MLFQS using formula from B2. */
 void
-calculate_priority_MLFQS (struct thread *t) {
+calculate_priority_MLFQS (struct thread *t)
+{
   int eq = DIV_INTFP(t->recent_cpu, 4);
   int eq2 = SUB(CONVERT_INT_TO_FP(PRI_MAX), eq);
   int eq3 = CONVERT_INT_TO_FP(2 * t->nice);
   t -> priority = CONVERT_FP_TO_INT(SUB(eq2, eq3));
 
   bound_thread_priorities(t);
-  
 }
 
 /* Make sure priority is within bounds of 0-64. */
-void bound_thread_priorities (struct thread *t) {
+void bound_thread_priorities (struct thread *t)
+{
   if (t -> priority > PRI_MAX) t->priority = PRI_MAX;
   if (t -> priority < PRI_MIN) t->priority = PRI_MIN;
-}
-
-/* If running thread no longer has highest priority, yields */
-void check_if_highest_priority (void) {
-  //Needs to be finished to check if thread has highest priority
-    thread_yield();
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -410,8 +407,8 @@ void
 thread_set_nice (int nice UNUSED) 
 {
   thread_current ()->nice = nice;
-  calculate_priority_MLFQS(thread_current());
-  check_if_highest_priority ();
+  calculate_priority_MLFQS (thread_current());
+  priority_check ();
 }
 
 /* Returns the current thread's nice value. (Described in B1) */
@@ -561,8 +558,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
-  t->base_priority = priority;
+  t->priority = thread_mlfqs ? PRI_DEFAULT : priority;
+  t->base_priority = thread_mlfqs ? PRI_DEFAULT : priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->locks);
 
