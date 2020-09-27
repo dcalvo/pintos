@@ -12,6 +12,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
+#include "fixed-point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -65,6 +66,9 @@ void push_ready_thread (struct thread *t); /* Wrapper for list_insert_ordered. *
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
+
+/* Load average */
+int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -377,36 +381,100 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
+/* Calculates priority for MLFQS using formula from B2. */
+void
+calculate_priority_MLFQS (struct thread *t) {
+  int eq = DIV_INTFP(t->recent_cpu, 4);
+  int eq2 = SUB(CONVERT_INT_TO_FP(PRI_MAX), eq);
+  int eq3 = CONVERT_INT_TO_FP(2 * t->nice);
+  t -> priority = CONVERT_FP_TO_INT(SUB(eq2, eq3));
+
+  bound_thread_priorities(t);
+  
+}
+
+/* Make sure priority is within bounds of 0-64. */
+void bound_thread_priorities (struct thread *t) {
+  if (t -> priority > PRI_MAX) t->priority = PRI_MAX;
+  if (t -> priority < PRI_MIN) t->priority = PRI_MIN;
+}
+
+/* If running thread no longer has highest priority, yields */
+void check_if_highest_priority (void) {
+  //Needs to be finished to check if thread has highest priority
+    thread_yield();
+}
+
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  thread_current ()->nice = nice;
+  calculate_priority_MLFQS(thread_current());
+  check_if_highest_priority ();
 }
 
-/* Returns the current thread's nice value. */
+/* Returns the current thread's nice value. (Described in B1) */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
-/* Returns 100 times the system load average. */
+/* Returns 100 times the system load average. (Described in B4) */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+ return CONVERT_FP_TO_NEAR_INT(MULT_INTFP(load_avg, 100));
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/* Returns 100 times the current thread's recent_cpu value. (Described in B3) */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return CONVERT_FP_TO_NEAR_INT(MULT_INTFP(thread_current()->recent_cpu, 100));
 }
+
+/* Each time a timer interrupt occurs, recent_cpu is incremented by 1 for the running thread only.
+   Used in timer.c when in */
+void inc_cpu (void) {
+  if (thread_current != idle_thread) thread_current()->recent_cpu = ADD(thread_current()->recent_cpu, CONVERT_INT_TO_FP(1));
+}
+
+/* Once per second, the value of recent cpu is recalculated using this formula from B3 */
+void calc_recent_cpu (struct thread *t) 
+{
+  /* Formula from B3 */
+  if (t != idle_thread)
+  {
+    int eq1 = DIV_FP(MULT_INTFP(load_avg, 2), ADD(MULT_INTFP(load_avg, 2), 1));
+    int eq2 = MULT_FP(eq1, t->recent_cpu);
+    t->recent_cpu = ADD(eq2, t->nice);
+  }
+}
+
+/* Once per second the value of recent cpu is recalculated for each thread */
+void calc_all_rcpus (void) {
+  // I'm thinking to use thread_foreach, but I'm not sure if I should implement it this way
+}
+
+/* Priority for every thread is recalculated for every fourth clock tick */
+void calc_all_priority (void) {
+  // I'm thinking to use thread_foreach, but I'm not sure if I should implement it this way
+}
+
+/* Calculating load average*/
+void calc_load_avg (void) 
+{
+  /* Number of threads that are either running or ready to run at time of update (not including idle thread) */
+  int ready_threads = list_size(&ready_list);
+  if (thread_current() != idle_thread) ready_threads++;
+
+  /* Formula for B3 */
+  int part = MULT_FP(DIV_INTFP(CONVERT_INT_TO_FP(59), 60), load_avg);
+  load_avg = ADD(part, DIV_INTFP(CONVERT_INT_TO_FP(part), 60));
+}
+
 
 /* Idle thread.  Executes when no other thread is ready to run.
 

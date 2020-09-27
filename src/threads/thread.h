@@ -96,6 +96,9 @@ struct thread
     struct list locks;                  /* A list of locks the thread has acquired. */
     struct lock *requesting;             /* The Lock that a thread is requesting to acquire. */
 
+    int nice;                           /* Needed for niceness in mlfqs. */
+    int recent_cpu;                     /* Needed for calculating recent_cpu in mlfqs. */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

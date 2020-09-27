@@ -187,6 +187,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  /* If -mlfqs option is set... */
+  if (thread_mlfqs) {
+    /* Each time a timer interrupt occurs, recent_cpu is incremented by 1 for the running thread only. (Described in B3.) */
+    inc_cpu();
+    /* Load average must be updated exactly when the system tick counter reaches a multiple of a second. (Described in B4.)
+       Once per second, the value of recent cpu is calculated for each thread. */
+    if (timer_ticks () % TIMER_FREQ == 0) {
+        calc_load_avg(); 
+        calc_all_rcpus(); //Not implemented
+      }
+    
+    /* Priority is recalculated for every thread once every fourth clock tick */
+    if (timer_ticks () % 4 == 0) {
+      calc_all_priority(); //Not implemented
+    }
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
