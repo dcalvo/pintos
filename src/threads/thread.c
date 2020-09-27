@@ -447,9 +447,9 @@ void calc_recent_cpu (struct thread *t, void *aux UNUSED)
   /* Formula from B3 */
   if (t != idle_thread)
   {
-    int eq1 = DIV_FP(MULT_INTFP(load_avg, 2), ADD(MULT_INTFP(load_avg, 2), 1));
-    int eq2 = MULT_FP(eq1, t->recent_cpu);
-    t->recent_cpu = ADD(eq2, t->nice);
+    int eq1 = DIV_FP(MULT_INTFP(load_avg, CONVERT_INT_TO_FP(2)), ADD(MULT_INTFP(load_avg, CONVERT_INT_TO_FP(2)), CONVERT_INT_TO_FP(1)));
+    int eq2 = MULT_FP(eq1, CONVERT_INT_TO_FP(t->recent_cpu));
+    t->recent_cpu = ADD(eq2, CONVERT_INT_TO_FP(t->nice));
   }
 }
 
