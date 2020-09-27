@@ -57,10 +57,11 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 void push_ready_thread (struct thread *t); /* Wrapper for list_insert_ordered. */
-void calculate_priority_MLFQS (struct thread *t);
+void calculate_priority_MLFQS (struct thread *t, void *aux UNUSED);
 void bound_thread_priorities (struct thread *t);
 void inc_cpu (void);
 void calc_load_avg (void);
+void calc_recent_cpu (struct thread *t, void *aux UNUSED);
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -385,7 +386,7 @@ thread_get_priority (void)
 
 /* Calculates priority for MLFQS using formula from B2. */
 void
-calculate_priority_MLFQS (struct thread *t)
+calculate_priority_MLFQS (struct thread *t, void *aux UNUSED)
 {
   int eq = DIV_INTFP(t->recent_cpu, 4);
   int eq2 = SUB(CONVERT_INT_TO_FP(PRI_MAX), eq);
@@ -404,10 +405,10 @@ void bound_thread_priorities (struct thread *t)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
   thread_current ()->nice = nice;
-  calculate_priority_MLFQS (thread_current());
+  calculate_priority_MLFQS (thread_current(), NULL);
   priority_check ();
 }
 
@@ -435,11 +436,12 @@ thread_get_recent_cpu (void)
 /* Each time a timer interrupt occurs, recent_cpu is incremented by 1 for the running thread only.
    Used in timer.c when in */
 void inc_cpu (void) {
-  if (thread_current != idle_thread) thread_current()->recent_cpu = ADD(thread_current()->recent_cpu, CONVERT_INT_TO_FP(1));
+  if (thread_current () != idle_thread)
+    thread_current()->recent_cpu = ADD(thread_current()->recent_cpu, CONVERT_INT_TO_FP(1));
 }
 
 /* Once per second, the value of recent cpu is recalculated using this formula from B3 */
-void calc_recent_cpu (struct thread *t) 
+void calc_recent_cpu (struct thread *t, void *aux UNUSED) 
 {
   /* Formula from B3 */
   if (t != idle_thread)
