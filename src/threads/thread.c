@@ -442,7 +442,7 @@ void inc_cpu (void) {
 }
 
 /* Once per second, the value of recent cpu is recalculated using this formula from B3 */
-void calc_recent_cpu (struct thread *t, void *aux UNUSED) 
+void calc_recent_cpu (struct thread *t, void *aux UNUSED)
 {
   /* Formula from B3 */
   if (t != idle_thread)
