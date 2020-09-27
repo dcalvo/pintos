@@ -297,10 +297,12 @@ timer_wake (void)
   if (ticks < v->value)
     return;
   list_pop_front (&alarm_list);
-  lock_acquire (&lock);
+  if (!lock_held_by_current_thread (&lock))
+    lock_acquire (&lock);
   while (waiter_blocked (&alarm))
     cond_signal (&alarm, &lock);
-  lock_release (&lock);
+  if (lock_held_by_current_thread (&lock))
+    lock_release (&lock);
 }
 
 static bool
