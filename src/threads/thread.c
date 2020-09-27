@@ -456,7 +456,7 @@ void calc_recent_cpu (struct thread *t, void *aux UNUSED)
     int left = MULT_FP(coef, recent_cpu_fp);
     int total_fp = ADD (left, nice_fp);
 
-    t->recent_cpu = CONVERT_FP_TO_INT(total_fp);
+    t->recent_cpu = total_fp;
   }
 }
 
