@@ -700,7 +700,7 @@ priority_check (void)
   struct thread *next = list_entry (list_front (&ready_list), struct thread, elem);
 
   if (cur != idle_thread && cur->priority < next->priority) // idle thread will block itself, this would break it
-    thread_yield ();
+    thread_yield_without_timer_wake ();
 }
 
 /* Compares two thread's priorities for use in list_sort.
