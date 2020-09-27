@@ -193,6 +193,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  if (thread_mlfqs)
+    t->nice = thread_current() == initial_thread ? 0 : thread_current()->nice;
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -562,9 +564,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->base_priority = thread_mlfqs ? PRI_DEFAULT : priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->locks);
-
-  if (thread_mlfqs)
-    t->nice = thread_current ()->tid == 1 ? 0 : thread_current ()->nice;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
