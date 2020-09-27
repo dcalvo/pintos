@@ -57,9 +57,9 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 void push_ready_thread (struct thread *t); /* Wrapper for list_insert_ordered. */
-void calculate_priority_MLFQS (struct thread *t, void *aux UNUSED);
+void calculate_priority_MLFQS (struct thread *t);
 void bound_thread_priorities (struct thread *t);
-void calc_recent_cpu (struct thread *t, void *aux UNUSED);
+void calc_recent_cpu (struct thread *t);
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -386,7 +386,7 @@ thread_get_priority (void)
 
 /* Calculates priority for MLFQS using formula from B2. */
 void
-calculate_priority_MLFQS (struct thread *t, void *aux UNUSED)
+calculate_priority_MLFQS (struct thread *t)
 {
   int eq = DIV_INTFP(t->recent_cpu, 4);
   int eq2 = SUB(CONVERT_INT_TO_FP(PRI_MAX), eq);
@@ -408,7 +408,7 @@ void
 thread_set_nice (int nice) 
 {
   thread_current ()->nice = nice;
-  calculate_priority_MLFQS (thread_current(), NULL);
+  calculate_priority_MLFQS (thread_current());
   priority_check ();
 }
 
@@ -441,7 +441,7 @@ void inc_cpu (void) {
 }
 
 /* Once per second, the value of recent cpu is recalculated using this formula from B3 */
-void calc_recent_cpu (struct thread *t, void *aux UNUSED) 
+void calc_recent_cpu (struct thread *t)
 {
   /* Formula from B3 */
   if (t != idle_thread)
