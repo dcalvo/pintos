@@ -57,10 +57,10 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 void push_ready_thread (struct thread *t); /* Wrapper for list_insert_ordered. */
-
-
-
-
+void calculate_priority_MLFQS (struct thread *t);
+void bound_thread_priorities (struct thread *t);
+void inc_cpu (void);
+void calc_load_avg (void);
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

@@ -144,6 +144,8 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+void calc_all_rcpus (void);
+void calc_all_priority (void);
 
 bool priority_greater_comp (const struct list_elem *t1, const struct list_elem *t2, void *aux UNUSED);
 
