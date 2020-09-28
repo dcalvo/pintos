@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
   
@@ -24,11 +25,19 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
+static struct condition alarm;
+
+static struct list alarm_list;
+
+static struct lock lock;
+
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+static bool value_less (const struct list_elem *a_, const struct list_elem *b_,
+                        void *aux UNUSED);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -37,6 +46,9 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  cond_init (&alarm);
+  list_init (&alarm_list);
+  lock_init (&lock);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -92,8 +104,11 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
+  lock_acquire (&lock);
+  timer_create_alarm (start + ticks);
   while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+    cond_wait (&alarm, &lock);
+  lock_release (&lock);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +187,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  /* If -mlfqs option is set... */
+  if (thread_mlfqs) {
+    /* Each time a timer interrupt occurs, recent_cpu is incremented by 1 for the running thread only. (Described in B3.) */
+    inc_cpu();
+    /* Load average must be updated exactly when the system tick counter reaches a multiple of a second. (Described in B4.)
+       Once per second, the value of recent cpu is calculated for each thread. */
+    if (timer_ticks () % TIMER_FREQ == 0) {
+        calc_load_avg(); 
+        calc_all_rcpus(); //Not implemented
+      }
+    
+    /* Priority is recalculated for every thread once every fourth clock tick */
+    if (timer_ticks () % 4 == 0) {
+      calc_all_priority(); //Not implemented
+    }
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -243,4 +275,41 @@ real_time_delay (int64_t num, int32_t denom)
      the possibility of overflow. */
   ASSERT (denom % 1000 == 0);
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
+}
+
+void
+timer_create_alarm (int64_t time)
+{
+  struct value *v;
+  v = malloc (sizeof(struct value));
+  if (v == NULL)
+    return;
+  v->value = time;
+  list_insert_ordered (&alarm_list, &v->elem, value_less, NULL);
+}
+
+void
+timer_wake (void)
+{
+  if (list_empty (&alarm_list))
+    return;
+  struct value *v = list_entry (list_front (&alarm_list), struct value, elem);
+  if (ticks < v->value)
+    return;
+  list_pop_front (&alarm_list);
+  if (!lock_held_by_current_thread (&lock))
+    lock_acquire (&lock);
+  while (waiter_blocked (&alarm))
+    cond_signal (&alarm, &lock);
+  if (lock_held_by_current_thread (&lock))
+    lock_release (&lock);
+}
+
+static bool
+value_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED)
+{
+  const struct value *a = list_entry (a_, struct value, elem);
+  const struct value *b = list_entry (b_, struct value, elem);
+  return a->value < b->value;
 }

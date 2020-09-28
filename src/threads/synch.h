@@ -22,6 +22,8 @@ struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
+    struct list_elem elem;      /* List element for lock holder. */
+    int priority;               /* Priority equivalent to the highest waiter priority. */
   };
 
 void lock_init (struct lock *);
@@ -40,6 +42,8 @@ void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
+bool waiter_blocked (struct condition *);
+void holder_update_priority (struct thread *t);
 
 /* Optimization barrier.
 
