@@ -440,7 +440,7 @@ static void
 push_argv (const char **argv, int argc, void **esp) {
   ASSERT(argc >= 0);
   
-  char *argv_addr[argc]; // ensure no funny business with the ASSERT above
+  void *argv_addr[argc]; // ensure no funny business with the ASSERT above
   int i, arg_len = 0;
 
   for (int i = 0; i < argc; i++) {
@@ -455,21 +455,21 @@ push_argv (const char **argv, int argc, void **esp) {
   *esp = (void *)((uintptr_t)(*esp) & 0xfffffffc); // word-align through pointer arithmetic
   *esp -= sizeof (uint8_t);
 
-  **esp = NULL; // argv[argc] = NULL
+  *((int *) *esp) = NULL; // argv[argc] = NULL
   *esp -= sizeof (char *);
 
   for (i = argc - 1; i >= 0; i--) {
-    **esp = argv_addr[i]; // argv addresses
+    memcpy (*esp, argv_addr[i], sizeof (void *)); // argv addresses
     *esp -= sizeof (char *);
   }
 
-  **esp = argv_addr; // address of argv
+  memcpy (*esp, argv_addr, sizeof (void **)); // address of argv
   *esp -= sizeof (char **);
 
-  **esp = argc; // value of argc
+  *((int *) *esp) = argc; // value of argc
   *esp -= sizeof (int);
 
-  **esp = 0; // fake return address
+  *((int *) *esp) = 0; // fake return address
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of
