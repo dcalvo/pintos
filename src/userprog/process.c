@@ -24,7 +24,7 @@ struct user_prog {
 };
 
 static thread_func start_process NO_RETURN;
-static bool load (struct user_prog, void (**eip) (void), void **esp);
+static bool load (struct *user_prog, void (**eip) (void), void **esp);
 static void push_argv (const char **argv, int argc, void **esp);
 
 /* Starts a new thread running a user program loaded from
