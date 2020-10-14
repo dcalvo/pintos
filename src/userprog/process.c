@@ -18,13 +18,14 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-static thread_func start_process NO_RETURN;
-static bool load (user_prog, void (**eip) (void), void **esp);
-static void push_argv (const char **argv, int argc, void **esp);
 struct user_prog {
   char *prog_name;      /* Name of the user program to be executed. */
   char *cmdline;        /* Command line input of the program including args. */
 };
+
+static thread_func start_process NO_RETURN;
+static bool load (struct user_prog, void (**eip) (void), void **esp);
+static void push_argv (const char **argv, int argc, void **esp);
 
 /* Starts a new thread running a user program loaded from
    the first arg of CMDLINE.  The new thread may be scheduled (and may even exit)
@@ -63,8 +64,9 @@ process_execute (const char *cmdline)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *program)
+start_process (void *program_)
 {
+  struct user_prog *program = program_;
   struct intr_frame if_;
   bool success;
 
