@@ -4,6 +4,14 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "filesys/filesys.h"
+#include "threads/palloc.h"
+
+struct fd
+  {
+    int fd;
+    struct file *file;
+    struct list_elem elem;
+  };
 
 static void syscall_handler (struct intr_frame *);
 static void open (struct intr_frame *);
@@ -22,6 +30,13 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_OPEN:
       open (f);
       break;
+    case SYS_WRITE:
+      // TODO
+      break;
+    case SYS_READDIR:
+      break;
+    case SYS_ISDIR:
+      break;
     default:
       printf ("system call!\n");
       thread_exit ();
@@ -32,5 +47,16 @@ static void
 open (struct intr_frame *f)
 {
   char *name = *(char**)(f->esp + 4);
-  filesys_open (name);
+  struct file *file = filesys_open (name);
+  struct list *fds = &thread_current ()->fds;
+  struct fd *fd = palloc_get_page (PAL_ZERO);
+  if (list_empty (fds))
+    fd->fd = 2;
+  else {
+    struct fd *fd_2 = list_entry (list_back (fds), struct fd, elem);
+    fd->fd = fd_2->fd + 1;
+  }
+  fd->file = file;
+  list_push_back (fds, &fd->elem);
+  f->eax = fd->fd;
 }
