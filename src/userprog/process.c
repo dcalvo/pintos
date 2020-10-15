@@ -465,7 +465,7 @@ push_argv (const char **argv, int argc, void **esp) {
   }
 
   *esp -= sizeof (char *);
-  *esp = (char *)(0); // argv[argc] = NULL
+  *((int *) *esp) = 0; // argv[argc] = NULL
 
   for (i = argc - 1; i >= 0; i--) {
     *esp -= sizeof (char *);
