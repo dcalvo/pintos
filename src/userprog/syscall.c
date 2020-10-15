@@ -15,7 +15,7 @@ struct fd
     struct list_elem elem;
   };
 
-static void memfetch (void *dest, void *src, size_t size);
+static void fetch_args (struct intr_frame *f, int *argv, int num);
 static int get_user (const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byte);
 static void syscall_handler (struct intr_frame *);
@@ -78,36 +78,33 @@ static void
 sys_write (struct intr_frame *f)
 {
   int wrote = 0;
-  int fd;
-  const void *buf;
-  unsigned size;
+  int argv[3]; // argv: fd, buffer, size
 
-  memfetch (&fd, f->esp + 4, sizeof (fd));
-  memfetch (&buf, f->esp + 8, sizeof (buf));
-  memfetch (&size, f->esp + 12, sizeof (size));
+  fetch_args(f, argv, 3);
 
-  if (fd == 1) {
-    putbuf(buf, size);
-    wrote = size;
+  if (argv[0] == 1) {
+    putbuf(argv[1], argv[2]);
+    wrote = argv[2];
   }
 
   f->eax = wrote;
 }
 
-/* Safely fetch register value from SRC and store it into DEST. Reads up to SIZE bytes. */
+/* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */
 static void
-memfetch (void *dest, void *src, size_t size)
+fetch_args (struct intr_frame *f, int *argv, int num)
 {
   int val;
-  for (size_t i = 0; i < size; i++)
+  for (int i = 1; i <= num; i++)
   {
-    val = get_user ((int *)src + i);
+    int *arg = (int *) f->esp + i;
+    val = get_user ((const uint8_t *) arg);
     if (val == -1)
     {
       PANIC("implement unsafe access error handling");
     }
 
-    *((int *)dest + i) = val & 0xff;
+    argv[i - 1] = *arg;
   }
 }
 
