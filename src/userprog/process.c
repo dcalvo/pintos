@@ -514,6 +514,7 @@ setup_stack (void **esp, char *cmdline)
   push_argv (argv, argc, esp);
   palloc_free_page(argv);
   printf("leaving setup_stack\n"); // TEST
+  hex_dump();
   return success;
 }
 
