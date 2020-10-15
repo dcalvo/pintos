@@ -71,6 +71,7 @@ start_process (void *cmdline_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (cmdline, &if_.eip, &if_.esp);
 
+  printf("leaving start_process\n"); // TEST
   /* If load failed, quit. */
   palloc_free_page (cmdline);
   if (!success) 
@@ -324,10 +325,11 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
-
+  printf("leaving setup_stack1\n"); // TEST
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  printf("leaving setup_stack2\n"); // TEST
   return success;
 }
 
@@ -511,6 +513,7 @@ setup_stack (void **esp, char *cmdline)
 
   push_argv (argv, argc, esp);
   palloc_free_page(argv);
+  printf("leaving setup_stack\n"); // TEST
   return success;
 }
 
