@@ -223,6 +223,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
+  char *prog_name, *save_ptr;
   off_t file_ofs;
   bool success = false;
   int i;
@@ -233,11 +234,18 @@ load (const char *cmdline, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  /* Extract PROG_NAME from CMDLINE_COPY. */
+  prog_name = palloc_get_page (0);
+  if (prog_name == NULL)
+    goto done;
+  strlcpy (prog_name, cmdline, PGSIZE);
+  prog_name = strtok_r (prog_name, " ", &save_ptr);
+
   /* Open executable file. */
-  file = filesys_open (cmdline);
+  file = filesys_open (prog_name);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", cmdline);
+      printf ("load: %s: open failed\n", prog_name);
       goto done; 
     }
 
@@ -250,7 +258,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", cmdline);
+      printf ("load: %s: error loading executable\n", prog_name);
       goto done; 
     }
 
