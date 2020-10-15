@@ -82,9 +82,13 @@ sys_write (struct intr_frame *f)
 
   fetch_args(f, argv, 3);
 
-  if (argv[0] == 1) {
-    putbuf(argv[1], argv[2]);
-    wrote = argv[2];
+  int fd = argv[0];
+  const void *buffer = argv[1];
+  unsigned size = argv[2];
+
+  if (fd == 1) {
+    putbuf(buffer, size);
+    wrote = size;
   }
 
   f->eax = wrote;
