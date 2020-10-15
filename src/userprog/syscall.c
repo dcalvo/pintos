@@ -74,9 +74,9 @@ static void
 sys_write (struct intr_frame *f)
 {
   int wrote = 0;
-  int fd = *(f->esp + 4);
-  const void *buffer = *(f->esp + 8);
-  unsigned size = *(f->esp + 12);
+  int fd = *(int *)(f->esp + 4);
+  const void *buffer = *(char *)(f->esp + 8);
+  unsigned size = *(int *)(f->esp + 12);
 
   if (fd == 1) {
     putbuf(buffer, size);
