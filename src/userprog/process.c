@@ -457,7 +457,7 @@ push_argv (const char **argv, int argc, void **esp) {
 
   /* ESP is now below all ARGV strings. */
 
-  while(*esp % 4 != 0)
+  while((int) *esp % 4 != 0)
   {
     *esp -= sizeof (char);
     char c = 0;
@@ -465,14 +465,14 @@ push_argv (const char **argv, int argc, void **esp) {
   }
 
   *esp -= sizeof (char *);
-  *((int *) *esp) = NULL; // argv[argc] = NULL
+  *((int *) *esp) = (int *)(0); // argv[argc] = NULL
 
   for (i = argc - 1; i >= 0; i--) {
     *esp -= sizeof (char *);
     memcpy (*esp, &argv_addr[i], sizeof (void *)); // argv addresses
   }
 
-  int p = *esp;
+  int p = (int*) *esp;
   *esp -= sizeof (char **);
   memcpy (*esp, &p, sizeof (void **)); // address of argv
 
