@@ -77,8 +77,10 @@ open (struct intr_frame *f)
 static void
 sys_write (struct intr_frame *f)
 {
-  int fd, size;
+  int wrote = 0;
+  int fd;
   const void *buf;
+  unsigned size;
 
   memfetch (&fd, f->esp + 4, sizeof (fd));
   memfetch (&buf, f->esp + 8, sizeof (buf));
@@ -86,7 +88,10 @@ sys_write (struct intr_frame *f)
 
   if (fd == 1) {
     putbuf(buf, size);
+    wrote = size;
   }
+
+  f->eax = wrote;
 }
 
 /* Safely fetch register value from SRC and store it into DEST. Reads up to SIZE bytes. */
@@ -96,13 +101,13 @@ memfetch (void *dest, void *src, size_t size)
   int val;
   for (size_t i = 0; i < size; i++)
   {
-    val = get_user (src + i);
+    val = get_user ((int *)src + i);
     if (val == -1)
     {
       PANIC("implement unsafe access error handling");
     }
 
-    *((char *)(dest + i)) = val & 0xff;
+    *((int *)dest + i) = val & 0xff;
   }
 }
 
