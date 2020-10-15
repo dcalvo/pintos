@@ -106,9 +106,6 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  int exit_code = 0; // TODO implement exit_code setting and getting in thread.h
-  printf ("%s: exit(%d)\n", cur->name, exit_code);
-
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

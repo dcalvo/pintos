@@ -95,6 +95,7 @@ struct thread
 
     struct list fds;
     bool exiting;                       /* If thread is trying to exit. */
+    int exit_code;                      /* Integer representing how the process exited. */
     struct thread *parent;              /* Parent thread. */
 
 #ifdef USERPROG

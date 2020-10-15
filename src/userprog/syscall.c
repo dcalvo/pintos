@@ -17,8 +17,7 @@ struct fd
   };
 
 static void fetch_args (struct intr_frame *f, int *argv, int num);
-static int get_user (const uint8_t *uaddr);
-static bool put_user (uint8_t *udst, uint8_t byte);
+static void validate_addr (const void *addr);
 static void syscall_handler (struct intr_frame *);
 static void open (struct intr_frame *);
 static void sys_write (struct intr_frame *);
@@ -30,8 +29,9 @@ syscall_init (void)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f) 
 {
+  int argv[3]; // we expect at most 3 args and define as such to users
   uint32_t syscall_num = *(uint32_t*)f->esp;
   switch (syscall_num) {
     case SYS_HALT:
@@ -39,13 +39,16 @@ syscall_handler (struct intr_frame *f UNUSED)
       NOT_REACHED ();
       break;
     case SYS_EXIT:
-      thread_current ()->parent->exiting = true;
-      thread_exit ();
+      fetch_args(f, argv, 1);
+      sys_exit (argv[0]);
+      NOT_REACHED ();
+      break;
     case SYS_OPEN:
       open (f);
       break;
     case SYS_WRITE:
-      sys_write (f);
+      fetch_args(f, argv, 3); // fd, buffer, size
+      f->eax = sys_write (argv[0], (const void *) argv[1], (unsigned) argv[2]);
       break;
     case SYS_READDIR:
       break;
@@ -55,6 +58,18 @@ syscall_handler (struct intr_frame *f UNUSED)
       printf ("system call!\n");
       thread_exit ();
   }
+}
+
+/* Implementation of SYS_EXIT syscall. */
+static void
+sys_exit (int status)
+{
+  printf ("%s: exit(%d)\n", thread_current()->name, status);
+  
+  thread_current ()->parent->exiting = true; //TODO fix this
+  
+  thread_current ()->exit_code = status;
+  thread_exit ();
 }
 
 static void
@@ -77,24 +92,17 @@ open (struct intr_frame *f)
 
 
 /* Implementation of SYS_WRITE syscall. */
-static void
-sys_write (struct intr_frame *f)
+static int
+sys_write (int fd, const void *buffer, unsigned size)
 {
   int wrote = 0;
-  int argv[3]; // argv: fd, buffer, size
-
-  fetch_args(f, argv, 3);
-
-  int fd = argv[0];
-  const void *buffer = (const void *) argv[1];
-  unsigned size = argv[2];
 
   if (fd == 1) {
     putbuf(buffer, size);
     wrote = size;
   }
 
-  f->eax = wrote;
+  return wrote;
 }
 
 /* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */
@@ -104,7 +112,7 @@ fetch_args (struct intr_frame *f, int *argv, int num)
   for (int i = 1; i <= num; i++)
   {
     int *arg = (int *) f->esp + i;
-    validate_addr(arg);
+    validate_addr((const void *) arg);
     argv[i - 1] = *arg;
   }
 }
@@ -114,5 +122,5 @@ static void
 validate_addr (const void *addr)
 {
   if (!is_user_vaddr(addr) || !pagedir_get_page(thread_current()->pagedir, addr))
-    sys_exit(-1);
+    sys_exit(-1); // -1 for memory violations
 }
