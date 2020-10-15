@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "filesys/filesys.h"
 #include "threads/palloc.h"
+#include "devices/shutdown.h"
 
 struct fd
   {
@@ -15,6 +16,7 @@ struct fd
 
 static void syscall_handler (struct intr_frame *);
 static void open (struct intr_frame *);
+static void sys_write (struct intr_frame *);
 
 void
 syscall_init (void) 
@@ -38,9 +40,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       open (f);
       break;
     case SYS_WRITE:
-      if ((*(uint32_t*)f->esp + 5) == 1) {
-        putbuf((*(uint32_t*)f->esp + 6), (*(uint32_t*)f->esp + 7));
-      }
+      sys_write (f);
       break;
     case SYS_READDIR:
       break;
@@ -68,4 +68,20 @@ open (struct intr_frame *f)
   fd->file = file;
   list_push_back (fds, &fd->elem);
   f->eax = fd->fd;
+}
+
+static void
+sys_write (struct intr_frame *f)
+{
+  int wrote = 0;
+  int fd = *(f->esp + 4);
+  const void *buffer = *(f->esp + 8);
+  unsigned size = *(f->esp + 12);
+
+  if (fd == 1) {
+    putbuf(buffer, size);
+    wrote = size;
+  }
+
+  return wrote;
 }
