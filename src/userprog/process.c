@@ -29,7 +29,6 @@ static void push_argv (const char **argv, int argc, void **esp);
 tid_t
 process_execute (const char *cmdline) 
 {
-  printf("in process_execute"); // TEST
   char *cmdline_copy, *prog_name, *save_ptr;
   tid_t tid;
 
@@ -59,7 +58,6 @@ process_execute (const char *cmdline)
 static void
 start_process (void *cmdline_)
 {
-  printf("in start_process"); // TEST
   char *cmdline = cmdline_;
   struct intr_frame if_;
   bool success;
@@ -71,12 +69,10 @@ start_process (void *cmdline_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (cmdline, &if_.eip, &if_.esp);
 
-  printf("leaving start_process\n"); // TEST
   /* If load failed, quit. */
   palloc_free_page (cmdline);
   if (!success) 
     thread_exit ();
-  printf("entering user process\n"); // TEST
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -223,7 +219,6 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *cmdline, void (**eip) (void), void **esp) 
 {
-  printf("in load"); // TEST
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -333,12 +328,10 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
-  printf("leaving setup_stack1\n"); // TEST
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
   if (prog_name) palloc_free_page(prog_name);
-  printf("leaving setup_stack2\n"); // TEST
   return success;
 }
 
@@ -453,7 +446,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Pushes elements of ARGV onto the stack followed by ARGC, then pushes a fake return address. */
 static void
 push_argv (const char **argv, int argc, void **esp) {
-  printf("in push_argv"); // TEST
   ASSERT(argc >= 0);
   
   void *argv_addr[argc]; // ensure no funny business with the ASSERT above
@@ -502,7 +494,6 @@ push_argv (const char **argv, int argc, void **esp) {
 static bool
 setup_stack (void **esp, char *cmdline) 
 {
-  printf("in setup_stack"); // TEST
   uint8_t *kpage;
   bool success = false;
 
@@ -527,13 +518,10 @@ setup_stack (void **esp, char *cmdline)
 
   for (tok = strtok_r (cmdline, " ", &save_ptr); tok != NULL; tok = strtok_r (NULL, " ", &save_ptr)) {
     argv[argc++] = tok;
-    printf("%s\n", tok); // TEST
   }
 
   push_argv (argv, argc, esp);
   palloc_free_page(argv);
-  printf("leaving setup_stack\n"); // TEST
-  hex_dump(*esp,*esp,PHYS_BASE-(*esp),true);
   return success;
 }
 
