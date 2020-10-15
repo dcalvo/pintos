@@ -16,6 +16,8 @@ struct fd
   };
 
 static void memfetch (void *dest, void *src, size_t size);
+static int get_user (const uint8_t *uaddr);
+static bool put_user (uint8_t *udst, uint8_t byte);
 static void syscall_handler (struct intr_frame *);
 static void open (struct intr_frame *);
 static void sys_write (struct intr_frame *);
@@ -75,7 +77,6 @@ open (struct intr_frame *f)
 static void
 sys_write (struct intr_frame *f)
 {
-  int wrote = 0;
   int fd, size;
   const void *buf;
 
