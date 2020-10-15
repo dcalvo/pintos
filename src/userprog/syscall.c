@@ -19,8 +19,11 @@ struct fd
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 static void validate_addr (const void *addr);
 static void syscall_handler (struct intr_frame *);
+
+/* Syscall implementations. */
+static void sys_exit (int status);
 static void open (struct intr_frame *);
-static void sys_write (struct intr_frame *);
+static int sys_write (int fd, const void *buffer, unsigned size);
 
 void
 syscall_init (void) 
