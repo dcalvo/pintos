@@ -333,6 +333,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  if (prog_name) palloc_free_page(prog_name);
   return success;
 }
 
