@@ -483,11 +483,12 @@ push_argv (const char **argv, int argc, void **esp) {
 
   for (i = argc - 1; i >= 0; i--) {
     *esp -= sizeof (char *);
-    memcpy (*esp, argv_addr[i], sizeof (void *)); // argv addresses
+    memcpy (*esp, &argv_addr[i], sizeof (void *)); // argv addresses
   }
 
+  int p = *esp;
   *esp -= sizeof (char **);
-  memcpy (*esp, argv_addr, sizeof (void **)); // address of argv
+  memcpy (*esp, &p, sizeof (void **)); // address of argv
 
   *esp -= sizeof (int);
   *((int *) *esp) = argc; // value of argc
