@@ -7,6 +7,7 @@
 #include "threads/palloc.h"
 #include "devices/shutdown.h"
 #include "threads/vaddr.h"
+#include "pagedir.h"
 
 struct fd
   {
@@ -74,6 +75,8 @@ open (struct intr_frame *f)
   f->eax = fd->fd;
 }
 
+
+/* Implementation of SYS_WRITE syscall. */
 static void
 sys_write (struct intr_frame *f)
 {
@@ -98,47 +101,18 @@ sys_write (struct intr_frame *f)
 static void
 fetch_args (struct intr_frame *f, int *argv, int num)
 {
-  int val;
   for (int i = 1; i <= num; i++)
   {
     int *arg = (int *) f->esp + i;
-    // val = get_user ((const uint8_t *) arg);
-    // if (val == -1)
-    // {
-    //   PANIC("implement unsafe access error handling");
-    // }
-
+    validate_addr(arg);
     argv[i - 1] = *arg;
   }
 }
 
-/* From the project page. */
-/* Reads a byte at user virtual address UADDR.
-   UADDR must be below PHYS_BASE.
-   Returns the byte value if successful, -1 if a segfault
-   occurred. */
-static int
-get_user (const uint8_t *uaddr)
+/* Check if an address is valid using the methods described on the project page. */
+static void
+validate_addr (const void *addr)
 {
-  if (PHYS_BASE > (void *) uaddr) return -1;
-
-  int result;
-  asm ("movl $1f, %0; movzbl %1, %0; 1:"
-       : "=&a" (result) : "m" (*uaddr));
-  return result;
-}
-
-/* From the project page. */
-/* Writes BYTE to user address UDST.
-   UDST must be below PHYS_BASE.
-   Returns true if successful, false if a segfault occurred. */
-static bool
-put_user (uint8_t *udst, uint8_t byte)
-{
-  if (PHYS_BASE > (void *) udst) return false;
-  
-  int error_code;
-  asm ("movl $1f, %0; movb %b2, %1; 1:"
-       : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-  return error_code != -1;
+  if (!is_user_vaddr(addr) || !pagedir_get_page(thread_current()->pagedir, addr))
+    sys_exit(-1);
 }
