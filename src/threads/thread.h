@@ -94,6 +94,8 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     struct list fds;
+    bool exiting;                       /* If thread is trying to exit. */
+    struct thread *parent;              /* Parent thread. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

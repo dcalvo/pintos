@@ -99,7 +99,7 @@ start_process (void *cmdline_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while (1);
+  while (!thread_current()->exiting);
   return -1;
 }
 
