@@ -31,8 +31,8 @@ syscall_handler (struct intr_frame *f UNUSED)
       open (f);
       break;
     case SYS_WRITE:
-      printf("fd : %d | Length : %d\n",*(p+5),*(p+7));
-		  printf("buffer: %s\n",*(p+6));
+      printf("fd : %d | Length : %d\n",*((uint32_t*)(f->esp)+5),*((uint32_t*)(f->esp)+7));
+		  printf("buffer: %s\n",*((uint32_t*)(f->esp)+6));
       break;
     case SYS_READDIR:
       break;
