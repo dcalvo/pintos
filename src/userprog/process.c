@@ -76,7 +76,7 @@ start_process (void *cmdline_)
   palloc_free_page (cmdline);
   if (!success) 
     thread_exit ();
-
+  printf("entering user process\n"); // TEST
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
