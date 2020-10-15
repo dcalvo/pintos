@@ -19,7 +19,7 @@
 #include "threads/vaddr.h"
 
 static thread_func start_process NO_RETURN;
-static bool load (char *cmnd_line, void (**eip) (void), void **esp);
+static bool load (char *cmdline, void (**eip) (void), void **esp);
 static void push_argv (const char **argv, int argc, void **esp);
 
 /* Starts a new thread running a user program loaded from
@@ -27,24 +27,24 @@ static void push_argv (const char **argv, int argc, void **esp);
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *cmnd_line) 
+process_execute (const char *cmdline) 
 {
   char *cl_copy;
   char *file_name, *args;
   tid_t tid;
 
-  /* Make a copy of CMND_LINE.
+  /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
   cl_copy = palloc_get_page (0);
   if (cl_copy == NULL)
     return TID_ERROR;
-  strlcpy (cl_copy, cmnd_line, PGSIZE);
+  strlcpy (cl_copy, cmdline, PGSIZE);
 
   /* Extract FILE_NAME from CL_COPY. */
   file_name = palloc_get_page (0);
   if (file_name == NULL)
     return TID_ERROR;
-  strlcpy (file_name, cmnd_line, PGSIZE);
+  strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
   /* Create a new thread to execute FILE_NAME. */
@@ -57,9 +57,9 @@ process_execute (const char *cmnd_line)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *cmnd_line_)
+start_process (void *cmdline_)
 {
-  char *cmnd_line = cmnd_line_;
+  char *cmdline = cmdline_;
   struct intr_frame if_;
   bool success;
 
@@ -68,10 +68,10 @@ start_process (void *cmnd_line_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (cmnd_line, &if_.eip, &if_.esp);
+  success = load (cmdline, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (cmnd_line);
+  palloc_free_page (cmdline);
   if (!success) 
     thread_exit ();
 
@@ -205,7 +205,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp, char *cmnd_line);
+static bool setup_stack (void **esp, char *cmdline);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -216,7 +216,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (char *cmnd_line, void (**eip) (void), void **esp) 
+load (char *cmdline, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -232,11 +232,11 @@ load (char *cmnd_line, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  /* Extract FILE_NAME from CMND_LINE. */
+  /* Extract FILE_NAME from CMDLINE. */
   file_name = palloc_get_page (0);
   if (file_name == NULL)
     goto done;
-  strlcpy (file_name, cmnd_line, PGSIZE);
+  strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
   /* Open executable file. */
@@ -320,7 +320,7 @@ load (char *cmnd_line, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp, cmnd_line))
+  if (!setup_stack (esp, cmdline))
     goto done;
 
   /* Start address. */
@@ -489,7 +489,7 @@ push_argv (const char **argv, int argc, void **esp) {
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp, char *cmnd_line) 
+setup_stack (void **esp, char *cmdline) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -504,7 +504,7 @@ setup_stack (void **esp, char *cmnd_line)
         palloc_free_page (kpage);
     }
 
-  /* Parse CMND_LINE arguments. */
+  /* Parse CMDLINE arguments. */
   const char **argv = (const char**) palloc_get_page (0);
   if (!argv) {
     palloc_free_page (kpage);
@@ -513,7 +513,7 @@ setup_stack (void **esp, char *cmnd_line)
   char *tok, *save_ptr;
   int argc = 0;
 
-  for (tok = strtok_r (cmnd_line, " ", &save_ptr); tok != NULL; tok = strtok_r (NULL, " ", &save_ptr)) {
+  for (tok = strtok_r (cmdline, " ", &save_ptr); tok != NULL; tok = strtok_r (NULL, " ", &save_ptr)) {
     argv[argc++] = tok;
   }
 
