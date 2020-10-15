@@ -465,14 +465,14 @@ push_argv (const char **argv, int argc, void **esp) {
   }
 
   *esp -= sizeof (char *);
-  *((int *) *esp) = (int *)(0); // argv[argc] = NULL
+  *esp = (char *)(0); // argv[argc] = NULL
 
   for (i = argc - 1; i >= 0; i--) {
     *esp -= sizeof (char *);
     memcpy (*esp, &argv_addr[i], sizeof (void *)); // argv addresses
   }
 
-  int p = (int*) *esp;
+  int p = (int) *esp;
   *esp -= sizeof (char **);
   memcpy (*esp, &p, sizeof (void **)); // address of argv
 
