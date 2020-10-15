@@ -125,6 +125,10 @@ fetch_args (struct intr_frame *f, int *argv, int num)
 static void
 validate_addr (const void *addr)
 {
-  if (!is_user_vaddr(addr) || !pagedir_get_page(thread_current()->pagedir, addr))
-    sys_exit(-1); // -1 for memory violations
+  for (int i = 0; i < sizeof (addr); i++)
+  {
+    char *ptr = (char*)(addr) + 1; // increment through the addres one byte at a time
+    if (!is_user_vaddr(ptr) || !pagedir_get_page(thread_current()->pagedir, ptr))
+      sys_exit(-1); // -1 for memory violations
+  }
 }
