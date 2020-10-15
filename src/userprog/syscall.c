@@ -83,7 +83,7 @@ sys_write (struct intr_frame *f)
   fetch_args(f, argv, 3);
 
   int fd = argv[0];
-  const void *buffer = argv[1];
+  const void *buffer = (const void *) argv[1];
   unsigned size = argv[2];
 
   if (fd == 1) {
