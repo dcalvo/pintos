@@ -102,11 +102,11 @@ fetch_args (struct intr_frame *f, int *argv, int num)
   for (int i = 1; i <= num; i++)
   {
     int *arg = (int *) f->esp + i;
-    val = get_user ((const uint8_t *) arg);
-    if (val == -1)
-    {
-      PANIC("implement unsafe access error handling");
-    }
+    // val = get_user ((const uint8_t *) arg);
+    // if (val == -1)
+    // {
+    //   PANIC("implement unsafe access error handling");
+    // }
 
     argv[i - 1] = *arg;
   }
