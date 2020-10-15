@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -8,6 +9,9 @@
 #include "devices/shutdown.h"
 #include "threads/vaddr.h"
 #include "pagedir.h"
+#include "threads/synch.h"
+
+struct lock filesys;
 
 struct fd
   {
@@ -24,10 +28,12 @@ static void syscall_handler (struct intr_frame *);
 static void sys_exit (int status);
 static void open (struct intr_frame *);
 static int sys_write (int fd, const void *buffer, unsigned size);
+static int sys_exec (const char *cmdline);
 
 void
 syscall_init (void) 
 {
+  lock_init (&filesys);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -46,6 +52,10 @@ syscall_handler (struct intr_frame *f)
       fetch_args(f, argv, 1);
       sys_exit (argv[0]);
       NOT_REACHED ();
+      break;
+    case SYS_EXEC:
+      fetch_args(f, argv, 1);
+      f->eax = sys_exec((const char *) argv[0]);
       break;
     case SYS_OPEN:
       open (f);
@@ -74,6 +84,17 @@ sys_exit (int status)
   
   thread_current ()->exit_code = status;
   thread_exit ();
+}
+
+/* Implementation of SYS_EXEC syscall. */
+static int
+sys_exec (const char *cmdline)
+{
+  validate_addr(cmdline);
+  lock_acquire(&filesys);
+  int pid = process_execute (cmdline);
+  lock_release(&filesys);
+  return pid;
 }
 
 static void

@@ -49,7 +49,10 @@ process_execute (const char *cmdline)
   /* Create a new thread to execute PROG. */
   tid = thread_create (prog_name, PRI_DEFAULT, start_process, cmdline_copy);
   if (tid == TID_ERROR)
+  {
     palloc_free_page (cmdline_copy); 
+    palloc_free_page (prog_name);
+  }
   return tid;
 }
 
