@@ -460,7 +460,8 @@ push_argv (const char **argv, int argc, void **esp) {
   while((int) *esp % 4 != 0)
   {
     *esp -= sizeof (char);
-    *((int *) *esp) = 0;
+    char c = 0;
+    memcpy(*esp, &c, sizeof(char));
   }
 
   *esp -= sizeof (char *);
