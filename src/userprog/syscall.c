@@ -34,6 +34,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  validate_addr(f->esp);
   int argv[3]; // we expect at most 3 args and define as such to users
   uint32_t syscall_num = *(uint32_t*)f->esp;
   switch (syscall_num) {
