@@ -27,11 +27,20 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t syscall_num = *(uint32_t*)f->esp;
   switch (syscall_num) {
+    case SYS_HALT:
+      shutdown_power_off ();
+      NOT_REACHED ();
+      break;
+    case SYS_EXIT:
+      thread_current ()->parent->exiting = true;
+      thread_exit ();
     case SYS_OPEN:
       open (f);
       break;
     case SYS_WRITE:
-      // TODO
+      if ((*(uint32_t*)f->esp + 5) == 1) {
+        putbuf((*(uint32_t*)f->esp + 6), (*(uint32_t*)f->esp + 7));
+      }
       break;
     case SYS_READDIR:
       break;
