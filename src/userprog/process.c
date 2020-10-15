@@ -29,6 +29,7 @@ static void push_argv (const char **argv, int argc, void **esp);
 tid_t
 process_execute (const char *cmdline) 
 {
+  printf("in process_execute"); // TEST
   char *cmdline_copy, *prog_name, *save_ptr;
   tid_t tid;
 
@@ -58,6 +59,7 @@ process_execute (const char *cmdline)
 static void
 start_process (void *cmdline_)
 {
+  printf("in start_process"); // TEST
   char *cmdline = cmdline_;
   struct intr_frame if_;
   bool success;
@@ -220,6 +222,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *cmdline, void (**eip) (void), void **esp) 
 {
+  printf("in load"); // TEST
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -439,6 +442,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Pushes elements of ARGV onto the stack followed by ARGC, then pushes a fake return address. */
 static void
 push_argv (const char **argv, int argc, void **esp) {
+  printf("in push_argv"); // TEST
   ASSERT(argc >= 0);
   
   void *argv_addr[argc]; // ensure no funny business with the ASSERT above
@@ -478,6 +482,7 @@ push_argv (const char **argv, int argc, void **esp) {
 static bool
 setup_stack (void **esp, char *cmdline) 
 {
+  printf("in setup_stack"); // TEST
   uint8_t *kpage;
   bool success = false;
 
