@@ -457,14 +457,11 @@ push_argv (const char **argv, int argc, void **esp) {
 
   /* ESP is now below all ARGV strings. */
 
-  // *esp = (void *)((uintptr_t)(*esp) & 0xfffffffc); // word-align through pointer arithmetic
-  // *esp -= sizeof (uint8_t);
-
-  while((int)*esp%4!=0)
+  while(*esp % 4 != 0)
   {
-    *esp-=sizeof(char);
-    char x = 0;
-    memcpy(*esp,&x,sizeof(char));
+    *esp -= sizeof (char);
+    char c = 0;
+    memcpy(*esp, &c, sizeof(char));
   }
 
   *esp -= sizeof (char *);
