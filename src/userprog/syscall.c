@@ -6,7 +6,7 @@
 #include "filesys/filesys.h"
 #include "threads/palloc.h"
 #include "devices/shutdown.h"
-#include "vaddr.h"
+#include "threads/vaddr.h"
 
 struct fd
   {
