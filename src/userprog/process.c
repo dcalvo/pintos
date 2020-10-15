@@ -459,23 +459,31 @@ push_argv (const char **argv, int argc, void **esp) {
 
   /* ESP is now below all ARGV strings. */
 
-  *esp = (void *)((uintptr_t)(*esp) & 0xfffffffc); // word-align through pointer arithmetic
-  *esp -= sizeof (uint8_t);
+  // *esp = (void *)((uintptr_t)(*esp) & 0xfffffffc); // word-align through pointer arithmetic
+  // *esp -= sizeof (uint8_t);
 
-  *((int *) *esp) = NULL; // argv[argc] = NULL
-  *esp -= sizeof (char *);
-
-  for (i = argc - 1; i >= 0; i--) {
-    memcpy (*esp, argv_addr[i], sizeof (void *)); // argv addresses
-    *esp -= sizeof (char *);
+  while((int)*esp%4!=0)
+  {
+    *esp-=sizeof(char);
+    char x = 0;
+    memcpy(*esp,&x,sizeof(char));
   }
 
-  memcpy (*esp, argv_addr, sizeof (void **)); // address of argv
+  *esp -= sizeof (char *);
+  *((int *) *esp) = NULL; // argv[argc] = NULL
+
+  for (i = argc - 1; i >= 0; i--) {
+    *esp -= sizeof (char *);
+    memcpy (*esp, argv_addr[i], sizeof (void *)); // argv addresses
+  }
+
   *esp -= sizeof (char **);
+  memcpy (*esp, argv_addr, sizeof (void **)); // address of argv
 
-  *((int *) *esp) = argc; // value of argc
   *esp -= sizeof (int);
+  *((int *) *esp) = argc; // value of argc
 
+  *esp -= sizeof (int);
   *((int *) *esp) = 0; // fake return address
 }
 
@@ -509,6 +517,7 @@ setup_stack (void **esp, char *cmdline)
 
   for (tok = strtok_r (cmdline, " ", &save_ptr); tok != NULL; tok = strtok_r (NULL, " ", &save_ptr)) {
     argv[argc++] = tok;
+    printf("%s\n", tok); // TEST
   }
 
   push_argv (argv, argc, esp);
