@@ -21,20 +21,15 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void push_argv (const char **argv, int argc, void **esp);
-struct user_prog {
-  char *prog_name;      /* Name of the user program to be executed. */
-  char *cmdline;        /* Command line input of the program including args. */
-};
 
 /* Starts a new thread running a user program loaded from
-   the first arg of CMDLINE.  The new thread may be scheduled (and may even exit)
+   FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
 process_execute (const char *cmdline) 
 {
   char *cmdline_copy, *prog_name, *save_ptr;
-  struct user_prog *p;
   tid_t tid;
 
   /* Make a copy of CMDLINE.
@@ -50,11 +45,9 @@ process_execute (const char *cmdline)
     return TID_ERROR;
   strlcpy (prog_name, cmdline, PGSIZE);
   prog_name = strtok_r (prog_name, " ", &save_ptr);
-  p->prog_name = prog_name;
-  p->cmdline = cmdline_copy;
 
   /* Create a new thread to execute PROG. */
-  tid = thread_create (prog_name, PRI_DEFAULT, start_process, p);
+  tid = thread_create (prog_name, PRI_DEFAULT, start_process, cmdline_copy);
   if (tid == TID_ERROR)
     palloc_free_page (cmdline_copy); 
   return tid;
@@ -63,8 +56,9 @@ process_execute (const char *cmdline)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (struct user_prog *program)
+start_process (void *cmdline_)
 {
+  char *cmdline = cmdline_;
   struct intr_frame if_;
   bool success;
 
@@ -73,10 +67,10 @@ start_process (struct user_prog *program)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (program, &if_.eip, &if_.esp);
+  success = load (cmdline, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (program->cmdline);
+  palloc_free_page (cmdline);
   if (!success) 
     thread_exit ();
 
@@ -224,7 +218,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (struct user_prog *program, void (**eip) (void), void **esp) 
+load (const char *cmdline, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -240,10 +234,10 @@ load (struct user_prog *program, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (program->prog_name);
+  file = filesys_open (cmdline);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", program->prog_name);
+      printf ("load: %s: open failed\n", cmdline);
       goto done; 
     }
 
@@ -256,7 +250,7 @@ load (struct user_prog *program, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", program->prog_name);
+      printf ("load: %s: error loading executable\n", cmdline);
       goto done; 
     }
 
@@ -320,7 +314,7 @@ load (struct user_prog *program, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp, program->cmdline))
+  if (!setup_stack (esp, cmdline))
     goto done;
 
   /* Start address. */
