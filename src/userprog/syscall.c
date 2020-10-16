@@ -88,7 +88,6 @@ sys_exit (int status)
   printf ("%s: exit(%d)\n", t->name, status);
   info->exiting = true;
   info->exit_code = status;
-  palloc_free_page(info->cmdline);
   thread_exit ();
 }
 
