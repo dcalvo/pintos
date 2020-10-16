@@ -28,7 +28,6 @@ struct file* fetch_file (int fd_to_find);
 static void validate_addr (const void *addr);
 
 /* Syscall implementations. */
-static void sys_exit (int status);
 static int sys_exec (const char *cmdline);
 static bool sys_create (const char *file_name, unsigned size);
 static int sys_open (const char *);
@@ -103,14 +102,17 @@ syscall_handler (struct intr_frame *f)
 }
 
 /* Implementation of SYS_EXIT syscall. */
-static void
+void
 sys_exit (int status)
 {
   struct thread *t = thread_current ();
   struct child_thread *info = t->info;
   printf ("%s: exit(%d)\n", t->name, status);
-  info->exiting = true;
-  info->exit_code = status;
+  if (info)
+  {
+    info->exiting = true;
+    info->exit_code = status;
+  }
   thread_exit ();
 }
 
