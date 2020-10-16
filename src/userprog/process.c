@@ -30,7 +30,6 @@ tid_t
 process_execute (const char *cmdline) 
 {
   char *cl_copy, *file_name, *args;
-  struct child_thread *child;
   tid_t tid;
 
   /* Make a copy of CMDLINE.
@@ -47,18 +46,10 @@ process_execute (const char *cmdline)
   strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
-  /* Insert command line into child_thread info struct. */
-  child = palloc_get_page (0);
-  if (child == NULL)
-    goto error_occured;
-  child->cmdline = cl_copy;
-
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, child);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, cl_copy);
   if (tid == TID_ERROR)
     goto error_occured;
-  child->pid = tid;
-  list_push_back(&(thread_current ()->children), &(child->elem));
   
   palloc_free_page (file_name);
   return tid;
@@ -66,16 +57,15 @@ process_execute (const char *cmdline)
   error_occured:
     if (cl_copy) palloc_free_page (cl_copy);
     if (file_name) palloc_free_page (file_name);
-    if (child) palloc_free_page (child);
     return TID_ERROR;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *child_)
+start_process (void *cmdline_)
 {
-  struct child_thread *child = child_;
+  char *cmdline = cmdline_;
   struct intr_frame if_;
   bool success;
 
@@ -84,16 +74,12 @@ start_process (void *child_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (child->cmdline, &if_.eip, &if_.esp);
+  success = load (cmdline, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (child->cmdline);
+  palloc_free_page (cmdline);
   if (!success) 
     thread_exit ();
-
-  child->thread = thread_current ();
-  thread_current ()->info = child;
-  child->waited = false;
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

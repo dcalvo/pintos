@@ -198,6 +198,17 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  /* Initialize child_thread info struct. */
+  #ifdef USERPROG
+  struct child_thread *child = palloc_get_page (0);
+  if (!child)
+    return TID_ERROR;
+  child->waited = false;
+  child->exiting = false;
+  child->exit_code = -1;
+  list_push_back(&thread_current ()->children, &child->elem);
+  #endif
+
   /* Add to run queue. */
   thread_unblock (t);
 
