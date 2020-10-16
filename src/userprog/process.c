@@ -93,6 +93,7 @@ start_process (void *child_)
 
   child->thread = thread_current ();
   thread_current ()->info = child;
+  child->waited = false;
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
