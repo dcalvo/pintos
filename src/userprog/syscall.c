@@ -6,6 +6,7 @@
 #include "threads/thread.h"
 #include "devices/shutdown.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
@@ -26,10 +27,11 @@ static void syscall_handler (struct intr_frame *);
 
 /* Syscall implementations. */
 static void sys_exit (int status);
+static int sys_exec (const char *cmdline);
 static bool sys_create (const char *file_name, unsigned size);
 static int sys_open (const char *);
 static int sys_write (int fd, const void *buffer, unsigned size);
-static int sys_exec (const char *cmdline);
+static void sys_close (int fd);
 
 void
 syscall_init (void) 
@@ -50,29 +52,33 @@ syscall_handler (struct intr_frame *f)
       NOT_REACHED ();
       break;
     case SYS_EXIT:
-      fetch_args(f, argv, 1);
+      fetch_args (f, argv, 1);
       sys_exit (argv[0]);
       NOT_REACHED ();
       break;
     case SYS_EXEC:
-      fetch_args(f, argv, 1);
+      fetch_args (f, argv, 1);
       f->eax = sys_exec ((const char *) argv[0]);
       break;
     case SYS_WAIT:
-      fetch_args(f, argv, 1);
+      fetch_args (f, argv, 1);
       f->eax = process_wait (argv[0]);
       break;
     case SYS_CREATE:
-      fetch_args(f, argv, 2);
+      fetch_args (f, argv, 2);
       f->eax = sys_create ((const char *) argv[0], (unsigned) argv[1]);
       break;
     case SYS_OPEN:
-      fetch_args(f, argv, 1);
+      fetch_args (f, argv, 1);
       f->eax = sys_open ((const char *) argv[0]);
       break;
     case SYS_WRITE:
-      fetch_args(f, argv, 3); // fd, buffer, size
+      fetch_args (f, argv, 3); // fd, buffer, size
       f->eax = sys_write (argv[0], (const void *) argv[1], (unsigned) argv[2]);
+      break;
+    case SYS_CLOSE:
+      fetch_args (f, argv, 1);
+      sys_close (argv[0]);
       break;
     case SYS_READDIR:
       break;
@@ -161,6 +167,30 @@ sys_write (int fd, const void *buffer, unsigned size)
   }
 
   return wrote;
+}
+
+/* Implementation of SYS_CLOSE syscall. */
+static void
+sys_close (int fd_to_close)
+{
+  struct list *fds = &(thread_current ()->fds);
+  
+  lock_acquire (&filesys);
+  if (!list_empty(fds))
+  {
+    for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
+    {
+      struct fd *fd = list_entry (it, struct child_thread, elem);
+      if (fd->fd == fd_to_close)
+      {
+        file_close (fd->file);
+        list_remove (&fd->elem);
+        palloc_free_page (fd);
+        break; // closed requested file
+      }
+    }
+  }
+  lock_release (&filesys);
 }
 
 /* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */
