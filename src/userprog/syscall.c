@@ -1,17 +1,18 @@
 #include "userprog/syscall.h"
-#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
-#include "devices/shutdown.h"
-#include "devices/input.h"
-#include "filesys/filesys.h"
-#include "filesys/file.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+
+#include "devices/shutdown.h"
+#include "devices/input.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "threads/palloc.h"
-#include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 
 struct lock filesys;
 
@@ -46,7 +47,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  validate_addr(f->esp);
+  validate_addr (f->esp);
   int argv[3]; // we expect at most 3 args and define as such to users
   uint32_t syscall_num = *(uint32_t*)f->esp;
   switch (syscall_num) {
@@ -106,13 +107,13 @@ void
 sys_exit (int status)
 {
   struct thread *t = thread_current ();
-  struct child_thread *info = t->info;
-  printf ("%s: exit(%d)\n", t->name, status);
-  if (info)
+  struct shared_info *shared_info = t->shared_info;
+  if (shared_info)
   {
-    info->exiting = true;
-    info->exit_code = status;
+    shared_info->has_exited = true;
+    shared_info->exit_code = status;
   }
+  printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
 }
 
@@ -120,10 +121,10 @@ sys_exit (int status)
 static int
 sys_exec (const char *cmdline)
 {
-  validate_addr(cmdline);
-  lock_acquire(&filesys);
+  validate_addr (cmdline);
+  lock_acquire (&filesys);
   int pid = process_execute (cmdline);
-  lock_release(&filesys);
+  lock_release (&filesys);
   return pid;
 }
 
@@ -218,7 +219,7 @@ sys_write (int fd, const void *buffer, unsigned size)
   validate_addr (buffer);
 
   if (fd == 1) {
-    putbuf(buffer, size);
+    putbuf (buffer, size);
     return size;
   }
 
@@ -239,10 +240,10 @@ sys_write (int fd, const void *buffer, unsigned size)
 static void
 sys_close (int fd_to_close)
 {
-  struct list *fds = &(thread_current ()->fds);
+  struct list *fds = &thread_current ()->fds;
   
   lock_acquire (&filesys);
-  if (!list_empty(fds))
+  if (!list_empty (fds))
   {
     for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
     {
@@ -266,7 +267,7 @@ fetch_args (struct intr_frame *f, int *argv, int num)
   for (int i = 1; i <= num; i++)
   {
     int *arg = (int *) f->esp + i;
-    validate_addr((const void *) arg);
+    validate_addr ((const void *) arg);
     argv[i - 1] = *arg;
   }
 }
@@ -275,9 +276,9 @@ fetch_args (struct intr_frame *f, int *argv, int num)
 struct file*
 fetch_file (int fd_to_find)
 {
-  struct list *fds = &(thread_current ()->fds);
+  struct list *fds = &thread_current ()->fds;
   
-  if (!list_empty(fds))
+  if (!list_empty (fds))
   {
     for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
     {
@@ -297,8 +298,8 @@ validate_addr (const void *addr)
   char *ptr = (char*)(addr); // increment through the addres one byte at a time
   for (unsigned i = 0; i < sizeof (addr); i++)
   {
-    if (!is_user_vaddr(ptr) || !pagedir_get_page(thread_current()->pagedir, ptr))
-      sys_exit(-1); // -1 for memory violations
+    if (!is_user_vaddr (ptr) || !pagedir_get_page (thread_current()->pagedir, ptr))
+      sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
 }

@@ -103,16 +103,15 @@ start_process (void *cmdline_)
 int
 process_wait (tid_t child_tid) 
 {
-  struct thread *cur = thread_current ();
-  struct child_thread *child = NULL;
-  struct list *children = &(cur->children);
+  struct shared_info *child = NULL;
 
+  struct list *children = &(thread_current ()->children);
   if (!list_empty(children))
   {
     for (struct list_elem *it = list_front (children); it != list_end (children); it = list_next (it))
     {
-      struct child_thread *child_ = list_entry (it, struct child_thread, elem);
-      if (child_->pid == child_tid)
+      struct shared_info *child_ = list_entry (it, struct shared_info, elem);
+      if (child_->tid == child_tid)
       {
         child = child_;
         break; // found child process
@@ -122,17 +121,17 @@ process_wait (tid_t child_tid)
 
   /* CHILD is not a direct child of the waiting process, or CHILD is already waited upon. 
      We use short circuiting to ensure we're not accessing a null child pointer. */
-  if (!child || child->waited)
+  if (!child || child->is_being_waited_upon)
   {
     return -1;
   }
 
-  child->waited = true;
+  child->is_being_waited_upon = true;
 
-  while (!child->exiting);
+  while (!child->has_exited);
 
   /* Child is being destroyed. */
-  list_remove(&child->elem);
+  list_remove (&child->elem);
 
   return child->exit_code;
 }

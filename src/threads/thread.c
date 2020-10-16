@@ -198,17 +198,17 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  /* Initialize child_thread info struct. */
+  /* Initialize shared_info struct. */
   #ifdef USERPROG
-  struct child_thread *child = palloc_get_page (0);
-  if (!child)
+  struct shared_info *shared_info = palloc_get_page (0);
+  if (!shared_info)
     return TID_ERROR;
-  child->pid = tid;
-  child->waited = false;
-  child->exiting = false;
-  child->exit_code = -1;
-  t->info = child;
-  list_push_back(&thread_current ()->children, &child->elem);
+  shared_info->tid = tid;
+  shared_info->is_being_waited_upon = false;
+  shared_info->has_exited = false;
+  shared_info->exit_code = -1;
+  t->shared_info = shared_info;
+  list_push_back(&thread_current ()->children, &shared_info->elem);
   #endif
 
   /* Add to run queue. */
