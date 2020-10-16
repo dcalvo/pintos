@@ -159,6 +159,7 @@ sys_open (const char *name)
 static int
 sys_write (int fd, const void *buffer, unsigned size)
 {
+  validate_addr (buffer);
   int wrote = 0;
 
   if (fd == 1) {
@@ -180,7 +181,7 @@ sys_close (int fd_to_close)
   {
     for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
     {
-      struct fd *fd = list_entry (it, struct child_thread, elem);
+      struct fd *fd = list_entry (it, struct fd, elem);
       if (fd->fd == fd_to_close)
       {
         file_close (fd->file);
