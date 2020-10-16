@@ -24,6 +24,15 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+struct shared_info
+  {
+    tid_t tid;                      /* Thread identifier. */
+    bool is_being_waited_upon;      /* Is there a thread already waiting on this one? */
+    bool has_exited;                /* If thread has exited. */
+    int exit_code;                  /* Integer representing how the process exited. */
+    struct list_elem elem;          /* List element. */
+  };
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -93,8 +102,8 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    struct shared_info *shared_info;    /* Info struct about this thread. */
     struct list children;               /* Child processes. */
-    struct child_thread *info;          /* Info struct about this thread. */
     struct list fds;                    /* List of file descriptors. */
 
 #ifdef USERPROG
