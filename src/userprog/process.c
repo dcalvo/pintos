@@ -296,6 +296,9 @@ load (char *cmdline, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  /* Disallow the writing of running executable files. */
+  file_deny_write (file);
+  
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++) 
