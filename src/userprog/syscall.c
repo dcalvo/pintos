@@ -78,7 +78,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_FILESIZE:
       fetch_args (f, argv, 1);
-      sys_filesize (argv[0]);
+      f->eax = sys_filesize (argv[0]);
       break;
     case SYS_READ:
       fetch_args (f, argv, 3);
