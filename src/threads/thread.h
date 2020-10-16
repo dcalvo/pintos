@@ -94,8 +94,8 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     struct list children;               /* Child processes. */
-    struct child_thread *info;           /* Info struct about this thread. */
-    struct list fds;
+    struct child_thread *info;          /* Info struct about this thread. */
+    struct list fds;                    /* List of file descriptors. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

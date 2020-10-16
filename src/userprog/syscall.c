@@ -64,11 +64,11 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_CREATE:
       fetch_args(f, argv, 2);
-      f->eax = sys_create ((const char*) argv[0], (unsigned) argv[1]);
+      f->eax = sys_create ((const char *) argv[0], (unsigned) argv[1]);
       break;
     case SYS_OPEN:
       fetch_args(f, argv, 1);
-      f->eax = sys_open (*(char**)argv[0]);
+      f->eax = sys_open ((const char *) argv[0]);
       break;
     case SYS_WRITE:
       fetch_args(f, argv, 3); // fd, buffer, size
@@ -123,17 +123,29 @@ sys_create (const char *file_name, unsigned size)
 static int
 sys_open (const char *name)
 {
+  validate_addr (name);
+
+  lock_acquire (&filesys);
   struct file *file = filesys_open (name);
   struct list *fds = &thread_current ()->fds;
   struct fd *fd = palloc_get_page (PAL_ZERO);
+  
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  
   if (list_empty (fds))
     fd->fd = 2;
   else {
-    struct fd *fd_2 = list_entry (list_back (fds), struct fd, elem);
-    fd->fd = fd_2->fd + 1;
+    struct fd *prev_fd = list_entry (list_back (fds), struct fd, elem);
+    fd->fd = prev_fd->fd + 1;
   }
+
   fd->file = file;
   list_push_back (fds, &fd->elem);
+  lock_release (&filesys);
   return fd->fd;
 }
 
