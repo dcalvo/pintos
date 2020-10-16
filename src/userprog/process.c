@@ -142,7 +142,20 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
+  struct list *fds = &thread_current ()->fds;
   uint32_t *pd;
+
+  /* Clean up file descriptors. */
+  if (!list_empty (fds))
+  {
+    for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
+    {
+      struct fd *fd = list_entry (it, struct fd, elem);
+        file_close (fd->file);
+        list_remove (&fd->elem);
+        palloc_free_page (fd);
+    }
+  }
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -296,8 +309,6 @@ load (char *cmdline, void (**eip) (void), void **esp)
       goto done; 
     }
 
-  /* Disallow the writing of running executable files. */
-  file_deny_write (file);
   
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
@@ -365,11 +376,13 @@ load (char *cmdline, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
+  /* Disallow the writing of running executable files. */
+  file_deny_write (file);
+  
   success = true;
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   if (file_name)
     palloc_free_page(file_name);
   return success;

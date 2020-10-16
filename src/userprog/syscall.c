@@ -16,13 +16,6 @@
 
 struct lock filesys;
 
-struct fd
-  {
-    int fd;
-    struct file *file;
-    struct list_elem elem;
-  };
-
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
