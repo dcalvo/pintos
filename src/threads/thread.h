@@ -27,7 +27,7 @@ typedef int tid_t;
 struct shared_info
   {
     tid_t tid;                      /* Thread identifier. */
-    bool waited;                    /* Is there a thread already waiting on this one? */
+    bool is_being_waited_upon;      /* Is there a thread already waiting on this one? */
     bool has_exited;                /* If thread has exited. */
     int exit_code;                  /* Integer representing how the process exited. */
     struct list_elem elem;          /* List element. */

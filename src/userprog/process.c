@@ -120,17 +120,17 @@ process_wait (tid_t child_tid)
 
   /* CHILD is not a direct child of the waiting process, or CHILD is already waited upon. 
      We use short circuiting to ensure we're not accessing a null child pointer. */
-  if (!child || child->waited)
+  if (!child || child->is_being_waited_upon)
   {
     return -1;
   }
 
-  child->waited = true;
+  child->is_being_waited_upon = true;
 
   while (!child->has_exited);
 
   /* Child is being destroyed. */
-  list_remove(&child->elem);
+  list_remove (&child->elem);
 
   return child->exit_code;
 }

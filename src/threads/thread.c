@@ -204,7 +204,7 @@ thread_create (const char *name, int priority,
   if (!shared_info)
     return TID_ERROR;
   shared_info->tid = tid;
-  shared_info->waited = false;
+  shared_info->is_being_waited_upon = false;
   shared_info->has_exited = false;
   shared_info->exit_code = -1;
   t->shared_info = shared_info;
