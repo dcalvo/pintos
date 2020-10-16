@@ -1,4 +1,5 @@
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -79,7 +80,7 @@ start_process (void *cmdline_)
   /* If load failed, quit. */
   palloc_free_page (cmdline);
   if (!success) 
-    thread_exit ();
+    sys_exit (-1);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -295,6 +296,9 @@ load (char *cmdline, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  /* Disallow the writing of running executable files. */
+  file_deny_write (file);
+  
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++) 
@@ -365,7 +369,6 @@ load (char *cmdline, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   if (file_name)
     palloc_free_page(file_name);
   return success;
