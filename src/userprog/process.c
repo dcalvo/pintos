@@ -50,7 +50,10 @@ process_execute (const char *cmdline)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, cl_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (cl_copy); 
+  {
+    palloc_free_page (cl_copy);
+    palloc_free_page (prog_name);
+  }
   return tid;
 }
 
