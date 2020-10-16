@@ -87,7 +87,7 @@ start_process (void *child_)
   success = load (child->cmdline, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (child);
+  palloc_free_page (child->cmdline);
   if (!success) 
     thread_exit ();
 
