@@ -2,14 +2,16 @@
 #include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "devices/shutdown.h"
+#include "devices/input.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#include "devices/shutdown.h"
-#include "filesys/filesys.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
-#include "userprog/pagedir.h"
 #include "threads/synch.h"
+#include "userprog/pagedir.h"
 
 struct lock filesys;
 
@@ -20,15 +22,20 @@ struct fd
     struct list_elem elem;
   };
 
-static void fetch_args (struct intr_frame *f, int *argv, int num);
-static void validate_addr (const void *addr);
 static void syscall_handler (struct intr_frame *);
+static void fetch_args (struct intr_frame *f, int *argv, int num);
+struct file* fetch_file (int fd_to_find);
+static void validate_addr (const void *addr);
 
 /* Syscall implementations. */
 static void sys_exit (int status);
-static int sys_open (const char *);
-static int sys_write (int fd, const void *buffer, unsigned size);
 static int sys_exec (const char *cmdline);
+static bool sys_create (const char *file_name, unsigned size);
+static int sys_open (const char *);
+static int sys_filesize (int fd);
+static int sys_read (int fd, void *buffer, unsigned size);
+static int sys_write (int fd, const void *buffer, unsigned size);
+static void sys_close (int fd);
 
 void
 syscall_init (void) 
@@ -49,21 +56,41 @@ syscall_handler (struct intr_frame *f)
       NOT_REACHED ();
       break;
     case SYS_EXIT:
-      fetch_args(f, argv, 1);
+      fetch_args (f, argv, 1);
       sys_exit (argv[0]);
       NOT_REACHED ();
       break;
     case SYS_EXEC:
-      fetch_args(f, argv, 1);
-      f->eax = sys_exec((const char *) argv[0]);
+      fetch_args (f, argv, 1);
+      f->eax = sys_exec ((const char *) argv[0]);
+      break;
+    case SYS_WAIT:
+      fetch_args (f, argv, 1);
+      f->eax = process_wait (argv[0]);
+      break;
+    case SYS_CREATE:
+      fetch_args (f, argv, 2);
+      f->eax = sys_create ((const char *) argv[0], (unsigned) argv[1]);
       break;
     case SYS_OPEN:
-      fetch_args(f, argv, 1);
-      f->eax = sys_open (*(char**)argv[0]);
+      fetch_args (f, argv, 1);
+      f->eax = sys_open ((const char *) argv[0]);
+      break;
+    case SYS_FILESIZE:
+      fetch_args (f, argv, 1);
+      f->eax = sys_filesize (argv[0]);
+      break;
+    case SYS_READ:
+      fetch_args (f, argv, 3);
+      f->eax = sys_read (argv[0], (void *) argv[1], (unsigned) argv[2]);
       break;
     case SYS_WRITE:
-      fetch_args(f, argv, 3); // fd, buffer, size
+      fetch_args (f, argv, 3); // fd, buffer, size
       f->eax = sys_write (argv[0], (const void *) argv[1], (unsigned) argv[2]);
+      break;
+    case SYS_CLOSE:
+      fetch_args (f, argv, 1);
+      sys_close (argv[0]);
       break;
     case SYS_READDIR:
       break;
@@ -79,11 +106,11 @@ syscall_handler (struct intr_frame *f)
 static void
 sys_exit (int status)
 {
-  printf ("%s: exit(%d)\n", thread_current()->name, status);
-  
-  thread_current ()->parent->exiting = true; //TODO fix this
-  
-  thread_current ()->exit_code = status;
+  struct thread *t = thread_current ();
+  struct child_thread *info = t->info;
+  printf ("%s: exit(%d)\n", t->name, status);
+  info->exiting = true;
+  info->exit_code = status;
   thread_exit ();
 }
 
@@ -98,36 +125,136 @@ sys_exec (const char *cmdline)
   return pid;
 }
 
+/* Implementation of SYS_CREATE syscall. */
+static bool
+sys_create (const char *file_name, unsigned size)
+{
+  validate_addr (file_name);
+  bool success = false;
+  lock_acquire (&filesys);
+  success = filesys_create (file_name, size);
+  lock_release (&filesys);
+  return success;
+}
+
 /* Implementation of SYS_OPEN syscall. */
 static int
 sys_open (const char *name)
 {
+  validate_addr (name);
+
+  lock_acquire (&filesys);
   struct file *file = filesys_open (name);
   struct list *fds = &thread_current ()->fds;
   struct fd *fd = palloc_get_page (PAL_ZERO);
+  
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  
   if (list_empty (fds))
     fd->fd = 2;
   else {
-    struct fd *fd_2 = list_entry (list_back (fds), struct fd, elem);
-    fd->fd = fd_2->fd + 1;
+    struct fd *prev_fd = list_entry (list_back (fds), struct fd, elem);
+    fd->fd = prev_fd->fd + 1;
   }
+
   fd->file = file;
   list_push_back (fds, &fd->elem);
+  lock_release (&filesys);
   return fd->fd;
+}
+
+/* Implementation of SYS_FILESIZE syscall. */
+static int sys_filesize (int fd)
+{
+  lock_acquire (&filesys);
+  struct file *file = fetch_file (fd);
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  int size = file_length (file);
+  lock_release (&filesys);
+  return size;
+}
+
+/* Implementation of SYS_READ syscall. */
+static int sys_read (int fd, void *buffer, unsigned size)
+{
+  validate_addr (buffer);
+
+  if (fd == 0) // read from stdinput
+  {
+    for (unsigned i = 0; i < size; i++)
+    {
+      ((uint8_t *) buffer)[i] = input_getc();
+    }
+    return size;
+  }
+  
+  // reading from file
+  lock_acquire (&filesys);
+  struct file *file = fetch_file (fd);
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  int read = file_read (file, buffer, size);
+  lock_release (&filesys);
+  return read;
 }
 
 /* Implementation of SYS_WRITE syscall. */
 static int
 sys_write (int fd, const void *buffer, unsigned size)
 {
-  int wrote = 0;
+  validate_addr (buffer);
 
   if (fd == 1) {
     putbuf(buffer, size);
-    wrote = size;
+    return size;
   }
 
+  // writing to file
+  lock_acquire (&filesys);
+  struct file *file = fetch_file (fd);
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  int wrote = file_write (file, buffer, size);
+  lock_release (&filesys);
   return wrote;
+}
+
+/* Implementation of SYS_CLOSE syscall. */
+static void
+sys_close (int fd_to_close)
+{
+  struct list *fds = &(thread_current ()->fds);
+  
+  lock_acquire (&filesys);
+  if (!list_empty(fds))
+  {
+    for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
+    {
+      struct fd *fd = list_entry (it, struct fd, elem);
+      if (fd->fd == fd_to_close)
+      {
+        file_close (fd->file);
+        list_remove (&fd->elem);
+        palloc_free_page (fd);
+        break; // closed requested file
+      }
+    }
+  }
+  lock_release (&filesys);
 }
 
 /* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */
@@ -140,6 +267,25 @@ fetch_args (struct intr_frame *f, int *argv, int num)
     validate_addr((const void *) arg);
     argv[i - 1] = *arg;
   }
+}
+
+/* Fetches a file handle from the current thread given a file descriptor. */
+struct file*
+fetch_file (int fd_to_find)
+{
+  struct list *fds = &(thread_current ()->fds);
+  
+  if (!list_empty(fds))
+  {
+    for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
+    {
+      struct fd *fd = list_entry (it, struct fd, elem);
+      if (fd->fd == fd_to_find)
+        return fd->file; // found requested file
+    }
+  }
+
+  return NULL;
 }
 
 /* Check if an address is valid using the methods described on the project page. */

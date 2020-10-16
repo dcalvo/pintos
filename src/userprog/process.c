@@ -29,31 +29,35 @@ static void push_argv (const char **argv, int argc, void **esp);
 tid_t
 process_execute (const char *cmdline) 
 {
-  char *cl_copy;
-  char *file_name, *args;
+  char *cl_copy, *file_name, *args;
   tid_t tid;
 
   /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
   cl_copy = palloc_get_page (0);
   if (cl_copy == NULL)
-    return TID_ERROR;
+    goto error_occured;
   strlcpy (cl_copy, cmdline, PGSIZE);
 
   /* Extract FILE_NAME from CL_COPY. */
   file_name = palloc_get_page (0);
   if (file_name == NULL)
-    return TID_ERROR;
+    goto error_occured;
   strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, cl_copy);
   if (tid == TID_ERROR)
-  {
-    palloc_free_page (cl_copy);
-  }
+    goto error_occured;
+  
+  palloc_free_page (file_name);
   return tid;
+
+  error_occured:
+    if (cl_copy) palloc_free_page (cl_copy);
+    if (file_name) palloc_free_page (file_name);
+    return TID_ERROR;
 }
 
 /* A thread function that loads a user process and starts it
@@ -97,10 +101,40 @@ start_process (void *cmdline_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  while (!thread_current()->exiting);
-  return -1;
+  struct thread *cur = thread_current ();
+  struct child_thread *child = NULL;
+  struct list *children = &(cur->children);
+
+  if (!list_empty(children))
+  {
+    for (struct list_elem *it = list_front (children); it != list_end (children); it = list_next (it))
+    {
+      struct child_thread *child_ = list_entry (it, struct child_thread, elem);
+      if (child_->pid == child_tid)
+      {
+        child = child_;
+        break; // found child process
+      }
+    }
+  }
+
+  /* CHILD is not a direct child of the waiting process, or CHILD is already waited upon. 
+     We use short circuiting to ensure we're not accessing a null child pointer. */
+  if (!child || child->waited)
+  {
+    return -1;
+  }
+
+  child->waited = true;
+
+  while (!child->exiting);
+
+  /* Child is being destroyed. */
+  list_remove(&child->elem);
+
+  return child->exit_code;
 }
 
 /* Free the current process's resources. */

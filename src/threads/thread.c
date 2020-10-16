@@ -198,6 +198,19 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  /* Initialize child_thread info struct. */
+  #ifdef USERPROG
+  struct child_thread *child = palloc_get_page (0);
+  if (!child)
+    return TID_ERROR;
+  child->pid = tid;
+  child->waited = false;
+  child->exiting = false;
+  child->exit_code = -1;
+  t->info = child;
+  list_push_back(&thread_current ()->children, &child->elem);
+  #endif
+
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -462,9 +475,8 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->parent = running_thread();
-  t->exiting = false;
   list_init (&t->fds);
+  list_init (&t->children);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
