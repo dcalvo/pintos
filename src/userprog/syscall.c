@@ -55,7 +55,11 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       fetch_args(f, argv, 1);
-      f->eax = sys_exec((const char *) argv[0]);
+      f->eax = sys_exec ((const char *) argv[0]);
+      break;
+    case SYS_WAIT:
+      fetch_args(f, argv, 1);
+      f->eax = process_wait (argv[0]);
       break;
     case SYS_OPEN:
       fetch_args(f, argv, 1);
@@ -79,11 +83,12 @@ syscall_handler (struct intr_frame *f)
 static void
 sys_exit (int status)
 {
-  printf ("%s: exit(%d)\n", thread_current()->name, status);
-  
-  thread_current ()->parent->exiting = true; //TODO fix this
-  
-  thread_current ()->exit_code = status;
+  struct thread *t = thread_current ();
+  struct child_thread *info = t->info;
+  printf ("%s: exit(%d)\n", t->name, status);
+  info->exiting = true;
+  info->exit_code = status;
+  palloc_free_page(info->cmdline);
   thread_exit ();
 }
 

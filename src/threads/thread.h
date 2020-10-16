@@ -93,10 +93,9 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    struct thread *parent;              /* Parent thread. */
-    bool exiting;                       /* If thread is trying to exit. */
+    struct list children;               /* Child processes. */
+    struct child_thread *info;           /* Info struct about this thread. */
     struct list fds;
-    int exit_code;                      /* Integer representing how the process exited. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

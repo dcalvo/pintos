@@ -465,6 +465,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = running_thread();
   t->exiting = false;
   list_init (&t->fds);
+  list_init (&t->children);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
