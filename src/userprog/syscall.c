@@ -150,7 +150,7 @@ sys_open (const char *name)
   struct list *fds = &thread_current ()->fds;
   struct fd *fd = palloc_get_page (PAL_ZERO);
   
-  if (!file)
+  if (!file || !fd)
   {
     lock_release (&filesys);
     return -1;
