@@ -32,6 +32,7 @@ static void sys_exit (int status);
 static int sys_exec (const char *cmdline);
 static bool sys_create (const char *file_name, unsigned size);
 static int sys_open (const char *);
+static int sys_filesize (int fd);
 static int sys_read (int fd, void *buffer, unsigned size);
 static int sys_write (int fd, const void *buffer, unsigned size);
 static void sys_close (int fd);
@@ -74,6 +75,10 @@ syscall_handler (struct intr_frame *f)
     case SYS_OPEN:
       fetch_args (f, argv, 1);
       f->eax = sys_open ((const char *) argv[0]);
+      break;
+    case SYS_FILESIZE:
+      fetch_args (f, argv, 1);
+      sys_filesize (argv[0]);
       break;
     case SYS_READ:
       fetch_args (f, argv, 3);
@@ -160,6 +165,21 @@ sys_open (const char *name)
   list_push_back (fds, &fd->elem);
   lock_release (&filesys);
   return fd->fd;
+}
+
+/* Implementation of SYS_FILESIZE syscall. */
+static int sys_filesize (int fd)
+{
+  lock_acquire (&filesys);
+  struct file *file = fetch_file (fd);
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  int size = file_length (file);
+  lock_release (&filesys);
+  return size;
 }
 
 /* Implementation of SYS_READ syscall. */
