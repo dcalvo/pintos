@@ -104,6 +104,7 @@ int
 process_wait (tid_t child_tid) 
 {
   struct shared_info *child = NULL;
+
   struct list *children = &(thread_current ()->children);
   if (!list_empty(children))
   {
