@@ -2,15 +2,16 @@
 #include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
-#include "threads/interrupt.h"
-#include "threads/thread.h"
 #include "devices/shutdown.h"
+#include "devices/input.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "threads/interrupt.h"
+#include "threads/thread.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
-#include "userprog/pagedir.h"
 #include "threads/synch.h"
+#include "userprog/pagedir.h"
 
 struct lock filesys;
 
@@ -30,6 +31,7 @@ static void sys_exit (int status);
 static int sys_exec (const char *cmdline);
 static bool sys_create (const char *file_name, unsigned size);
 static int sys_open (const char *);
+static int sys_read (int fd, void *buffer, unsigned size);
 static int sys_write (int fd, const void *buffer, unsigned size);
 static void sys_close (int fd);
 
@@ -71,6 +73,10 @@ syscall_handler (struct intr_frame *f)
     case SYS_OPEN:
       fetch_args (f, argv, 1);
       f->eax = sys_open ((const char *) argv[0]);
+      break;
+    case SYS_READ:
+      fetch_args (f, argv, 3);
+      f->eax = sys_write (argv[0], (void *) argv[1], (unsigned) argv[2]);
       break;
     case SYS_WRITE:
       fetch_args (f, argv, 3); // fd, buffer, size
@@ -155,6 +161,33 @@ sys_open (const char *name)
   return fd->fd;
 }
 
+/* Implementation of SYS_READ syscall. */
+static int sys_read (int fd, void *buffer, unsigned size)
+{
+  validate_addr (buffer);
+
+  if (fd == 0) // read from stdinput
+  {
+    for (unsigned i = 0; i < size; i++)
+    {
+      ((uint8_t *) buffer)[i] = input_getc();
+    }
+    return size;
+  }
+  
+  // reading from file
+  lock_acquire (&filesys);
+  struct file *file = fetch_file (fd);
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  int read = file_read (file, buffer, size);
+  lock_release (&filesys);
+  return read;
+}
+
 /* Implementation of SYS_WRITE syscall. */
 static int
 sys_write (int fd, const void *buffer, unsigned size)
@@ -204,6 +237,25 @@ fetch_args (struct intr_frame *f, int *argv, int num)
     validate_addr((const void *) arg);
     argv[i - 1] = *arg;
   }
+}
+
+/* Fetches a file handle from the current thread given a file descriptor. */
+struct file*
+fetch_file (int fd_to_find)
+{
+  struct list *fds = &(thread_current ()->fds);
+  
+  if (!list_empty(fds))
+  {
+    for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
+    {
+      struct fd *fd = list_entry (it, struct fd, elem);
+      if (fd->fd == fd_to_find)
+        return fd->file; // found requested file
+    }
+  }
+
+  return NULL;
 }
 
 /* Check if an address is valid using the methods described on the project page. */
