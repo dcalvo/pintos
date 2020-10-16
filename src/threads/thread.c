@@ -207,6 +207,7 @@ thread_create (const char *name, int priority,
   child->waited = false;
   child->exiting = false;
   child->exit_code = -1;
+  t->info = child;
   list_push_back(&thread_current ()->children, &child->elem);
   #endif
 
