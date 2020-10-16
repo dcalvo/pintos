@@ -205,7 +205,7 @@ thread_create (const char *name, int priority,
     return TID_ERROR;
   shared_info->tid = tid;
   shared_info->waited = false;
-  shared_info->exiting = false;
+  shared_info->has_exited = false;
   shared_info->exit_code = -1;
   t->shared_info = shared_info;
   list_push_back(&thread_current ()->children, &shared_info->elem);

@@ -28,7 +28,7 @@ struct shared_info
   {
     tid_t tid;                      /* Thread identifier. */
     bool waited;                    /* Is there a thread already waiting on this one? */
-    bool exiting;                   /* If thread is trying to exit. */
+    bool has_exited;                /* If thread has exited. */
     int exit_code;                  /* Integer representing how the process exited. */
     struct list_elem elem;          /* List element. */
   };

@@ -108,7 +108,7 @@ sys_exit (int status)
 {
   struct thread *t = thread_current ();
   struct shared_info *shared_info = t->shared_info;
-  shared_info->exiting = true;
+  shared_info->has_exited = true;
   shared_info->exit_code = status;
   printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();

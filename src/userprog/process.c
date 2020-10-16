@@ -127,7 +127,7 @@ process_wait (tid_t child_tid)
 
   child->waited = true;
 
-  while (!child->exiting);
+  while (!child->has_exited);
 
   /* Child is being destroyed. */
   list_remove(&child->elem);
