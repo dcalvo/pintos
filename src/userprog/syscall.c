@@ -214,13 +214,22 @@ static int
 sys_write (int fd, const void *buffer, unsigned size)
 {
   validate_addr (buffer);
-  int wrote = 0;
 
   if (fd == 1) {
     putbuf(buffer, size);
-    wrote = size;
+    return size;
   }
 
+  // writing to file
+  lock_acquire (&filesys);
+  struct file *file = fetch_file (fd);
+  if (!file)
+  {
+    lock_release (&filesys);
+    return -1;
+  }
+  int wrote = file_write (file, buffer, size);
+  lock_release (&filesys);
   return wrote;
 }
 
