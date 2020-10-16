@@ -77,7 +77,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_READ:
       fetch_args (f, argv, 3);
-      f->eax = sys_write (argv[0], (void *) argv[1], (unsigned) argv[2]);
+      f->eax = sys_read (argv[0], (void *) argv[1], (unsigned) argv[2]);
       break;
     case SYS_WRITE:
       fetch_args (f, argv, 3); // fd, buffer, size
