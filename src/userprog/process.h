@@ -7,7 +7,7 @@ struct child_thread {
     tid_t pid;                      /* PID. */
     struct thread *thread;          /* Pointer to actual thread. */
     struct list_elem elem;          /* List element. */
-    const char *cmdline;            /* Command that program is running. */
+    char *cmdline;            /* Command that program is running. */
     bool waited;                    /* Is there a thread already waiting on this one? */
     bool exiting;                   /* If thread is trying to exit. */
     int exit_code;                  /* Integer representing how the process exited. */
