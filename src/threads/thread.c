@@ -203,6 +203,7 @@ thread_create (const char *name, int priority,
   struct child_thread *child = palloc_get_page (0);
   if (!child)
     return TID_ERROR;
+  child->pid = tid;
   child->waited = false;
   child->exiting = false;
   child->exit_code = -1;
