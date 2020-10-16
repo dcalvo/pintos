@@ -52,7 +52,6 @@ process_execute (const char *cmdline)
   if (tid == TID_ERROR)
   {
     palloc_free_page (cl_copy);
-    palloc_free_page (prog_name);
   }
   return tid;
 }
