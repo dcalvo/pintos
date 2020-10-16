@@ -369,7 +369,6 @@ load (char *cmdline, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   if (file_name)
     palloc_free_page(file_name);
   return success;
