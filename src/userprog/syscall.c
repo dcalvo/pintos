@@ -22,9 +22,10 @@ struct fd
     struct list_elem elem;
   };
 
-static void fetch_args (struct intr_frame *f, int *argv, int num);
-static void validate_addr (const void *addr);
 static void syscall_handler (struct intr_frame *);
+static void fetch_args (struct intr_frame *f, int *argv, int num);
+struct file* fetch_file (int fd_to_find);
+static void validate_addr (const void *addr);
 
 /* Syscall implementations. */
 static void sys_exit (int status);
