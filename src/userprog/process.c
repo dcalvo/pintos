@@ -29,29 +29,29 @@ static void push_argv (const char **argv, int argc, void **esp);
 tid_t
 process_execute (const char *cmdline) 
 {
-  char *cmdline_copy, *prog_name, *save_ptr;
+  char *cl_copy;
+  char *file_name, *args;
   tid_t tid;
 
   /* Make a copy of CMDLINE.
      Otherwise there's a race between the caller and load(). */
-  cmdline_copy = palloc_get_page (0);
-  if (cmdline_copy == NULL)
+  cl_copy = palloc_get_page (0);
+  if (cl_copy == NULL)
     return TID_ERROR;
-  strlcpy (cmdline_copy, cmdline, PGSIZE);
+  strlcpy (cl_copy, cmdline, PGSIZE);
 
-  /* Extract PROG_NAME from CMDLINE_COPY. */
-  prog_name = palloc_get_page (0);
-  if (prog_name == NULL)
+  /* Extract FILE_NAME from CL_COPY. */
+  file_name = palloc_get_page (0);
+  if (file_name == NULL)
     return TID_ERROR;
-  strlcpy (prog_name, cmdline, PGSIZE);
-  prog_name = strtok_r (prog_name, " ", &save_ptr);
+  strlcpy (file_name, cmdline, PGSIZE);
+  file_name = strtok_r (file_name, " ", &args);
 
-  /* Create a new thread to execute PROG. */
-  tid = thread_create (prog_name, PRI_DEFAULT, start_process, cmdline_copy);
+  /* Create a new thread to execute FILE_NAME. */
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, cl_copy);
   if (tid == TID_ERROR)
   {
-    palloc_free_page (cmdline_copy); 
-    palloc_free_page (prog_name);
+    palloc_free_page (cl_copy);
   }
   return tid;
 }
@@ -76,6 +76,7 @@ start_process (void *cmdline_)
   palloc_free_page (cmdline);
   if (!success) 
     thread_exit ();
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -222,7 +223,7 @@ load (char *cmdline, void (**eip) (void), void **esp)
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
-  char *prog_name, *save_ptr;
+  char *file_name, *args;
   off_t file_ofs;
   bool success = false;
   int i;
@@ -233,18 +234,18 @@ load (char *cmdline, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  /* Extract PROG_NAME from CMDLINE_COPY. */
-  prog_name = palloc_get_page (0);
-  if (prog_name == NULL)
+  /* Extract FILE_NAME from CMDLINE. */
+  file_name = palloc_get_page (0);
+  if (file_name == NULL)
     goto done;
-  strlcpy (prog_name, cmdline, PGSIZE);
-  prog_name = strtok_r (prog_name, " ", &save_ptr);
+  strlcpy (file_name, cmdline, PGSIZE);
+  file_name = strtok_r (file_name, " ", &args);
 
   /* Open executable file. */
-  file = filesys_open (prog_name);
+  file = filesys_open (file_name);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", prog_name);
+      printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
 
@@ -257,7 +258,7 @@ load (char *cmdline, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", prog_name);
+      printf ("load: %s: error loading executable\n", file_name);
       goto done; 
     }
 
@@ -328,10 +329,12 @@ load (char *cmdline, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
+
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
-  if (prog_name) palloc_free_page(prog_name);
+  if (file_name)
+    palloc_free_page(file_name);
   return success;
 }
 

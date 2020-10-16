@@ -4,11 +4,11 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "devices/shutdown.h"
 #include "filesys/filesys.h"
 #include "threads/palloc.h"
-#include "devices/shutdown.h"
 #include "threads/vaddr.h"
-#include "pagedir.h"
+#include "userprog/pagedir.h"
 #include "threads/synch.h"
 
 struct lock filesys;
@@ -26,7 +26,7 @@ static void syscall_handler (struct intr_frame *);
 
 /* Syscall implementations. */
 static void sys_exit (int status);
-static void open (struct intr_frame *);
+static int sys_open (const char *);
 static int sys_write (int fd, const void *buffer, unsigned size);
 static int sys_exec (const char *cmdline);
 
@@ -58,7 +58,8 @@ syscall_handler (struct intr_frame *f)
       f->eax = sys_exec((const char *) argv[0]);
       break;
     case SYS_OPEN:
-      open (f);
+      fetch_args(f, argv, 1);
+      f->eax = sys_open (*(char**)argv[0]);
       break;
     case SYS_WRITE:
       fetch_args(f, argv, 3); // fd, buffer, size
@@ -97,10 +98,10 @@ sys_exec (const char *cmdline)
   return pid;
 }
 
-static void
-open (struct intr_frame *f)
+/* Implementation of SYS_OPEN syscall. */
+static int
+sys_open (const char *name)
 {
-  char *name = *(char**)(f->esp + 4);
   struct file *file = filesys_open (name);
   struct list *fds = &thread_current ()->fds;
   struct fd *fd = palloc_get_page (PAL_ZERO);
@@ -112,9 +113,8 @@ open (struct intr_frame *f)
   }
   fd->file = file;
   list_push_back (fds, &fd->elem);
-  f->eax = fd->fd;
+  return fd->fd;
 }
-
 
 /* Implementation of SYS_WRITE syscall. */
 static int
@@ -147,7 +147,7 @@ static void
 validate_addr (const void *addr)
 {
   char *ptr = (char*)(addr); // increment through the addres one byte at a time
-  for (int i = 0; i < sizeof (addr); i++)
+  for (unsigned i = 0; i < sizeof (addr); i++)
   {
     if (!is_user_vaddr(ptr) || !pagedir_get_page(thread_current()->pagedir, ptr))
       sys_exit(-1); // -1 for memory violations

@@ -462,10 +462,10 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->parent = running_thread();
+  t->exiting = false;
   list_init (&t->fds);
   t->magic = THREAD_MAGIC;
-  t->exiting = false;
-  t->parent = running_thread();
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
