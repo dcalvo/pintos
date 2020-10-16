@@ -26,6 +26,7 @@ static void syscall_handler (struct intr_frame *);
 
 /* Syscall implementations. */
 static void sys_exit (int status);
+static bool sys_create (const char *file_name, unsigned size);
 static int sys_open (const char *);
 static int sys_write (int fd, const void *buffer, unsigned size);
 static int sys_exec (const char *cmdline);
@@ -60,6 +61,10 @@ syscall_handler (struct intr_frame *f)
     case SYS_WAIT:
       fetch_args(f, argv, 1);
       f->eax = process_wait (argv[0]);
+      break;
+    case SYS_CREATE:
+      fetch_args(f, argv, 2);
+      f->eax = sys_create ((const char*) argv[0], (unsigned) argv[1]);
       break;
     case SYS_OPEN:
       fetch_args(f, argv, 1);
@@ -100,6 +105,18 @@ sys_exec (const char *cmdline)
   int pid = process_execute (cmdline);
   lock_release(&filesys);
   return pid;
+}
+
+/* Implementation of SYS_CREATE syscall. */
+static bool
+sys_create (const char *file_name, unsigned size)
+{
+  validate_addr (file_name);
+  bool success = false;
+  lock_acquire (&filesys);
+  success = filesys_create (file_name, size);
+  lock_release (&filesys);
+  return success;
 }
 
 /* Implementation of SYS_OPEN syscall. */
