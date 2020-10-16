@@ -107,10 +107,10 @@ static void
 sys_exit (int status)
 {
   struct thread *t = thread_current ();
-  struct child_thread *info = t->info;
+  struct shared_info *shared_info = t->shared_info;
+  shared_info->exiting = true;
+  shared_info->exit_code = status;
   printf ("%s: exit(%d)\n", t->name, status);
-  info->exiting = true;
-  info->exit_code = status;
   thread_exit ();
 }
 
