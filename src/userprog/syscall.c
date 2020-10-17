@@ -31,10 +31,13 @@ static void validate_addr (const void *addr);
 /* Syscall implementations. */
 static int sys_exec (const char *cmdline);
 static bool sys_create (const char *file_name, unsigned size);
-static int sys_open (const char *);
+static bool sys_remove (const char *file_name);
+static int sys_open (const char *file_name);
 static int sys_filesize (int fd);
 static int sys_read (int fd, void *buffer, unsigned size);
 static int sys_write (int fd, const void *buffer, unsigned size);
+static void sys_seek (int fd, unsigned position);
+static unsigned sys_tell (int fd);
 static void sys_close (int fd);
 
 void
@@ -72,6 +75,10 @@ syscall_handler (struct intr_frame *f)
       fetch_args (f, argv, 2);
       f->eax = sys_create ((const char *) argv[0], (unsigned) argv[1]);
       break;
+    case SYS_REMOVE:
+      fetch_args (f, argv, 1);
+      f->eax = sys_remove ((const char*)argv[0]);
+      break;
     case SYS_OPEN:
       fetch_args (f, argv, 1);
       f->eax = sys_open ((const char *) argv[0]);
@@ -87,6 +94,14 @@ syscall_handler (struct intr_frame *f)
     case SYS_WRITE:
       fetch_args (f, argv, 3); // fd, buffer, size
       f->eax = sys_write (argv[0], (const void *) argv[1], (unsigned) argv[2]);
+      break;
+    case SYS_SEEK:
+      fetch_args (f, argv, 2);
+      sys_seek (argv[0], (unsigned)argv[1]);
+      break;
+    case SYS_TELL:
+      fetch_args (f, argv, 1);
+      f->eax = sys_tell (argv[0]);
       break;
     case SYS_CLOSE:
       fetch_args (f, argv, 1);
@@ -140,14 +155,25 @@ sys_create (const char *file_name, unsigned size)
   return success;
 }
 
+/* Implementation of SYS_REMOVE syscall. */
+static bool
+sys_remove (const char *file_name)
+{
+  validate_addr (file_name);
+  lock_acquire (&filesys);
+  bool success = filesys_remove (file_name);
+  lock_release (&filesys);
+  return success;
+}
+
 /* Implementation of SYS_OPEN syscall. */
 static int
-sys_open (const char *name)
+sys_open (const char *file_name)
 {
-  validate_addr (name);
+  validate_addr (file_name);
 
   lock_acquire (&filesys);
-  struct file *file = filesys_open (name);
+  struct file *file = filesys_open (file_name);
   struct list *fds = &thread_current ()->fds;
   struct fd *fd = palloc_get_page (PAL_ZERO);
   
@@ -234,6 +260,27 @@ sys_write (int fd, const void *buffer, unsigned size)
   int wrote = file_write (file, buffer, size);
   lock_release (&filesys);
   return wrote;
+}
+
+/* Implementation of SYS_SEEK syscall. */
+static void
+sys_seek (int fd, unsigned position)
+{
+  struct file *file = fetch_file (fd);
+  lock_acquire (&filesys);
+  file_seek (file, position);
+  lock_release (&filesys);
+}
+
+/* Implementation of SYS_TELL syscall. */
+static unsigned
+sys_tell (int fd)
+{
+  struct file *file = fetch_file (fd);
+  lock_acquire (&filesys);
+  unsigned position = file_tell (file);
+  lock_release (&filesys);
+  return position;
 }
 
 /* Implementation of SYS_CLOSE syscall. */
