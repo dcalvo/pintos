@@ -47,6 +47,11 @@ process_execute (const char *cmdline)
   strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
+  struct file *file = filesys_open (file_name);
+  if (file == NULL)
+    goto error_occured;
+  file_close (file);
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, cl_copy);
   if (tid == TID_ERROR)
