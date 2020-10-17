@@ -107,9 +107,19 @@ syscall_handler (struct intr_frame *f)
       fetch_args (f, argv, 1);
       sys_close (argv[0]);
       break;
+    case SYS_MMAP:
+      break;
+    case SYS_MUNMAP:
+      break;
+    case SYS_CHDIR:
+      break;
+    case SYS_MKDIR:
+      break;
     case SYS_READDIR:
       break;
     case SYS_ISDIR:
+      break;
+    case SYS_INUMBER:
       break;
     default:
       printf ("system call!\n");
