@@ -8,7 +8,7 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
+David Calvo <dcalvo2@jhu.edu>
 FirstName LastName <email@domain.example>
 FirstName LastName <email@domain.example>
 
@@ -30,19 +30,56 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct shared_info
+  {
+    tid_t tid;                      /* Thread identifier. */
+    bool is_being_waited_upon;      /* Is there a thread already waiting on this one? */
+    bool has_exited;                /* If thread has exited. */
+    int exit_code;                  /* Integer representing how the process exited. */
+    struct list_elem elem;          /* List element. */
+  };
+
+Shared_info is like a process control block. It houses some information about the thread
+that both it and its parent should share.
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+Argument parsing is done using strtok_r. We tokenize the command line string and store the
+arguments and number of arguments. When it comes time to load the executable, we start at
+the top of the stack and push those arguments downward. We decrement the stack pointer after
+each operation by the appropriate type size in order to maintain a valid stack. 
+
+The stack page can only be overflowed if we attempt to give it a limitless input of arguments
+to push onto the stack. Since we limit user input to the size of one page, we should have ample
+room to store the maximum of one page of arguments onto the stack. 
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+I would assume that Pintos uses strtok_r() and not strtok() because the former is thread-safe 
+while the latter is not. Since strtok_r() uses a save_ptr, a thread can call the function but
+then be blocked safely. If a thread instead used strtok(), when it becomes blocked, other threads
+that call the function could modify its stored strtok() data. This violates the exclusiveness of
+a thread's memory.
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+The first advantage is security. Anything that the user can input and have parsed by the kernel
+is an inherent security vulnerability. It allows buffer overflow and stack smashing attacks, which
+if successful, grants access to the kernel and effectively the entire system.
+
+The second advantage is customization. Since Unix-like systems has the shell do command parsing,
+there is a degree of customization inherent to the choice. You can use sh, bash, zsh, or any other
+numerous shells, which parse commands differently (and perhaps more sensibly to you). If the kernel
+did this parsing, then there would be no way to modify the parsing without modifying the kernel (a
+very extreme measure for such minor customization).
 
 			     SYSTEM CALLS
 			     ============
