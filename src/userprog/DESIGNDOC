@@ -105,9 +105,21 @@ very extreme measure for such minor customization).
 >> (e.g. calls to pagedir_get_page()) that might result?  What about
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
+Currently, the check for accessing user memory occurs on every requested byte. 
+So for a full page of 4,096 bytes, we pagedir_get_page() 4,096 times. This
+can very likely be reduced down to a fraction if we scale the number of times
+we check a byte. We can make it a constant number and simply check at those
+divisional markers. So, if we wanted to check 4 times per call, we would check
+at 1,024, 2,048, etc. We would simply run the risk of having intermediate memory
+be invalid and go unchecked, requiring another system of failing safely.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+Wait is quite simple and could probably be improved. When a parent waits on a created child,
+it waits for the child's exiting status to be updated. So the parent enters wait and enters
+an infinite while loop dependent on the child's exit status. When the child terminates,
+the child's status is updated. On the next schedule of the waiting parent thread, it will
+re-evaluate the while loop condition and move past the block. 
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -122,6 +134,14 @@ very extreme measure for such minor customization).
 >> allocated resources (locks, buffers, etc.) are freed?  In a few
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
+The issue described is really minimal if you're diligent about developing your code piecemeal.
+All of our syscalls use a fetch_args function, which has very simple syntax and also validates
+the arguments of itself. It does this by handing the arguments to another validate_addr function.
+validate_addr has no return type and is called before any memory access. By this system, we can
+reduce what would normally be 1-4 blocks of error handling per system call, and turn it into two
+function calls that are very obvious in their purpose. This ensures that when looking at a syscall
+implementation, you're reading exactly what the syscall does and not getting distracted by input
+validation.
 
 ---- SYNCHRONIZATION ----
 
