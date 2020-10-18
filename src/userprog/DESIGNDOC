@@ -9,8 +9,8 @@
 >> Fill in the names and email addresses of your group members.
 
 David Calvo <dcalvo2@jhu.edu>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Vivian Sanchez <vsanche4@jhu.edu>
+Ken Tana <ptanawa1@jhu.edu>
 
 ---- PRELIMINARIES ----
 
@@ -99,6 +99,16 @@ very extreme measure for such minor customization).
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
 
+First, sys_read validates the buffer's address.
+    1. If fd = 0, then sys_read reads bytes from stdin one by one.
+    2. Else, sys_read fetches a file from the process's list of files.
+       Then, sys_read reads from that file.
+
+First, sys_write validates the buffer's address.
+    1. If fd = 1, then sys_write writes the buffer to stdout.
+    2. Else, sys_write fetches a file from the process's list of files.
+       Then, sys_write writes to that file.
+
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
 >> and the greatest possible number of inspections of the page table
@@ -150,6 +160,11 @@ validation.
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+The "exec" system call calls process_execute.
+process_execute opens the executable to see if it's missing.
+If it is missing, then process_execute return -1.
+Since process_execute returns -1, the "exec" system call returns -1.
+
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
@@ -157,16 +172,32 @@ validation.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+If P calls wait before C exits, P reads C's has_exited attribute repeatedly. Since P doesn't write to has_exited, wait avoids race conditions.
+If P calls wait after C exits, P reads C's has_exited attribute once. Since P doesn't write to has_exited, wait avoids race conditions.
+In each case, exit frees C's resources and P removes C from its child list.
+If P exits before C, then exit frees P's resources and then C's resources.
+If C exits before P, then exit frees C's resources and then P's resources.
+There are no special cases.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+We validate pointers before accessing user memory because it's easier.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+Each process has a sorted list of fds.
+Pro: The design is simple.
+Pro: Generating the next fd takes O(1) time.
+Con: Finding an fd with our linear search algorithm takes O(N) time.
+
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+We used the default tid_t to pid_t mapping.
 
 			   SURVEY QUESTIONS
 			   ================
