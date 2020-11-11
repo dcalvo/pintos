@@ -576,6 +576,7 @@ setup_stack (void **esp, char *cmdline)
     argv[argc++] = tok;
   }
 
+  printf("before push_argv");
   push_argv (argv, argc, esp);
   palloc_free_page(argv);
   return true;

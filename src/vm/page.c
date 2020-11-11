@@ -89,9 +89,10 @@ page_get (void *address)
     else {
         /* Checking that the page address is inside max stack size
          and at most 32 bytes away. */
-        if (pte.addr > PHYS_BASE - USER_STACK || 
+        if (pte.addr > PHYS_BASE - USER_STACK && 
             address > t->esp - 32)
             return page_alloc (pte.addr, true);
+        printf("address is truly invalid");
     }
 
     return NULL;
