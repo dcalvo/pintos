@@ -1,6 +1,7 @@
 #ifndef PAGE_H
 #define PAGE_H
 #include <hash.h>
+#include "filesys/off_t.h"
 
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
