@@ -20,7 +20,7 @@ unsigned frame_hash (const struct hash_elem *f_, void *aux);
 bool frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux);
 
-struct hash_elem * frame_install (struct frame_table_entry *fte,
+struct hash_elem * frame_allocate (struct frame_table_entry *fte,
          struct page_table_entry *pte, void *kpage);
 
 #endif

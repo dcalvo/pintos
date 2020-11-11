@@ -470,6 +470,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       //   pte->file_ofs = ofs;
       //   pte->file_bytes = page_read_bytes;
       // }
+      
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)

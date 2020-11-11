@@ -20,7 +20,7 @@ frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 struct hash_elem *
-frame_install (struct frame_table_entry *fte, struct page_table_entry *pte,
+frame_allocate (struct frame_table_entry *fte, struct page_table_entry *pte,
              void *kpage)
 {
     fte->addr = kpage; // store frame addr

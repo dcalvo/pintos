@@ -39,18 +39,32 @@ bool
 page_load (void *fault_addr)
 {
     struct thread *t = thread_current();
-    struct page_table_entry *p;
+    struct page_table_entry *pte;
 
     if (&t->page_table == NULL || hash_empty (&t->page_table))
         return false;
-    if (fault_addr == NULL)
+    if (!fault_addr)
         return false;
     
-    p = page_get (fault_addr);
-    if (p == NULL)
+    pte = page_get (fault_addr);
+    if (!pte)
         return false;
     
-    return true;
+    void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+    if (!kpage)
+        return false;
+    
+    // TODO load data into page
+
+    struct frame_table_entry *fte = malloc (sizeof *fte);
+    if (!fte)
+        return false;
+    if (frame_allocate(fte, pte, kpage) != NULL) {
+        free (fte);
+        return false;
+    }
+    
+    return install_page (pte->addr, kpage, pte->writable);
 }
 
 /* Given an address, get the page associated with it or return NULL.
@@ -80,25 +94,19 @@ page_get (void *address)
     return NULL;
 }
 
-/* Given an address, attempt to install a frame to act as a page for caller. */
+/* Given an address, allocate an entry in the page table (without loading) */
 struct page_table_entry*
 page_alloc (void *address, bool writable)
 {
-    void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
     void *upage = pg_round_down (address);
-    if (install_page (upage, kpage, writable)) {
-        struct page_table_entry *pte = malloc (sizeof *pte);
-        struct frame_table_entry *fte = malloc (sizeof *fte);
-        if (pte && fte) {
-            pte->addr = upage;
-            pte->writable = writable;
-            if (!hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
-                if (!frame_install (fte, pte, kpage))
-                    return pte;
-            }
-            free (pte);
-            free (fte);
+    struct page_table_entry *pte = malloc (sizeof *pte);
+    if (pte) {
+        pte->addr = upage;
+        pte->writable = writable;
+        if (!hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
+            return pte;
         }
+        free (pte);
     }
     return NULL;
 }
