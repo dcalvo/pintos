@@ -107,7 +107,7 @@ struct thread
     struct list children;               /* Child processes. */
     struct list fds;                    /* List of file descriptors. */
 
-    struct hash pagetable;             /* Hash table for pagetable. */
+    struct hash page_table;             /* Hash table for supplemental page table. */
     void *esp;                          /* esp register value at fault time. */
 
 #ifdef USERPROG

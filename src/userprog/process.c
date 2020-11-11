@@ -274,8 +274,8 @@ load (char *cmdline, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  /* Allocate and activate page table. */
-  hash_init (&t->pagetable, page_hash, page_less, NULL);
+  /* Allocate and activate supplemental page table. */
+  hash_init (&t->page_table, page_hash, page_less, NULL);
 
   /* Extract FILE_NAME from CMDLINE. */
   file_name = palloc_get_page (0);

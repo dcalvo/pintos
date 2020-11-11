@@ -8,9 +8,11 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 bool page_load (void *fault_addr);
 
-struct page
+struct page_table_entry
 {
     void *addr;                     /* Virtual address. */
     struct hash_elem hash_elem;     /* Hash element for page table. */
+    bool dirty;                     /* Dirty bit. Set when write. */
+    bool accessed;                  /* Accessed bit. Set when read/write. */
 };
 #endif
