@@ -93,11 +93,8 @@ page_alloc (void *address, bool writable)
         if (pte && fte) {
             pte->addr = upage;
             if (!hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
-                fte->addr = kpage; // store frame addr
-                fte->owner = thread_current (); // store frame owner
-                fte->pte = pte; // store frame pte
-                list_insert (&frame_table, &fte->elem); // store fte
-                return pte;
+                if (!frame_install (fte, pte, kpage))
+                    return pte;
             }
             free (pte);
             free (fte);
