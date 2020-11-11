@@ -10,7 +10,6 @@
 #define USER_STACK (8 * 1024 * 1024)
 
 static struct page_table_entry* page_get (void *address);
-static struct page_table_entry* page_alloc (void *address, bool writable);
 
 /* NOTE The following two functions (page_hash and page_less) were taken from
 the class project guide! Specifically from A.8.5 Hash Table Examples. */
