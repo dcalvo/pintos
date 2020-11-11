@@ -2,7 +2,7 @@
 
 /* Returns a hash value for frame f. */
 unsigned
-page_hash (const struct hash_elem *f_, void *aux UNUSED)
+frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame_table_entry *f = hash_entry (f_, struct frame_table_entry, elem);
   return hash_bytes (&f->addr, sizeof f->addr);
@@ -10,7 +10,7 @@ page_hash (const struct hash_elem *f_, void *aux UNUSED)
 
 /* Returns true if frame a precedes frame b. */
 bool
-page_less (const struct hash_elem *a_, const struct hash_elem *b_,
+frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux UNUSED)
 {
   const struct frame_table_entry *a = hash_entry (a_, struct frame_table_entry, elem);
