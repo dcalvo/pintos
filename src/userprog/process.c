@@ -452,7 +452,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-  file_seek (file, ofs);
+  //file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
@@ -461,28 +461,37 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
+      struct page_table_entry *pte = page_alloc (upage, writable);
+      if (!pte)
         return false;
 
-      /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      if (read_bytes > 0) {
+        pte->file = file;
+        pte->file_ofs = ofs;
+      }
+      // /* Get a page of memory. */
+      // uint8_t *kpage = palloc_get_page (PAL_USER);
+      // if (kpage == NULL)
+      //   return false;
 
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      // /* Load this page. */
+      // if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+      //   {
+      //     palloc_free_page (kpage);
+      //     return false; 
+      //   }
+      // memset (kpage + page_read_bytes, 0, page_zero_bytes);
+
+      // /* Add the page to the process's address space. */
+      // if (!install_page (upage, kpage, writable)) 
+      //   {
+      //     palloc_free_page (kpage);
+      //     return false; 
+      //   }
 
       /* Advance. */
       read_bytes -= page_read_bytes;
+      ofs += page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
     }
@@ -537,25 +546,28 @@ push_argv (const char **argv, int argc, void **esp) {
 static bool
 setup_stack (void **esp, char *cmdline) 
 {
-  uint8_t *kpage;
-  bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
-    }
+  // uint8_t *kpage;
+  struct page_table_entry *stack_pte = page_alloc (((uint8_t *) PHYS_BASE) - PGSIZE, true);
+  if (!stack_pte)
+    return false;
+  *esp = PHYS_BASE;
+  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  // if (kpage != NULL) 
+  //   {
+  //     success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+  //     if (success)
+  //       *esp = PHYS_BASE;
+  //     else
+  //       palloc_free_page (kpage);
+  //   }
 
   /* Parse CMDLINE arguments. */
-  const char **argv = (const char**) palloc_get_page (0);
-  if (!argv) {
-    palloc_free_page (kpage);
+  struct page_table_entry *argv_pte = page_alloc (((uint8_t *) PHYS_BASE) - 2 * PGSIZE, true);
+  if (!argv_pte) {
+    page_free (stack_pte);
     return false;
   }
+  const char **argv = (const char**) argv_pte->addr;
   char *tok, *save_ptr;
   int argc = 0;
 
@@ -564,8 +576,8 @@ setup_stack (void **esp, char *cmdline)
   }
 
   push_argv (argv, argc, esp);
-  palloc_free_page(argv);
-  return success;
+  page_free(argv);
+  return true;
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel

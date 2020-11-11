@@ -7,6 +7,8 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux);
 
 bool page_load (void *fault_addr);
+struct page_table_entry * page_alloc (void *address, bool writable);
+void page_free (void *address);
 
 struct page_table_entry
 {
@@ -14,5 +16,8 @@ struct page_table_entry
     struct hash_elem hash_elem;     /* Hash element for page table. */
     bool dirty;                     /* Dirty bit. Set when write. */
     bool accessed;                  /* Accessed bit. Set when read/write. */
+
+    struct file *file;              /* File page pointer. */
+    off_t file_ofs;                 /* File access offset. */
 };
 #endif

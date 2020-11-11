@@ -82,7 +82,7 @@ page_get (void *address)
 }
 
 /* Given an address, attempt to install a frame to act as a page for caller. */
-static struct page_table_entry*
+struct page_table_entry*
 page_alloc (void *address, bool writable)
 {
     void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
@@ -101,4 +101,13 @@ page_alloc (void *address, bool writable)
         }
     }
     return NULL;
+}
+
+/* Frees the page associated with the given address. */
+void page_free (void *address)
+{
+    struct page_table_entry *pte = page_get (address);
+    ASSERT (pte)
+
+    // TODO free page and frame
 }
