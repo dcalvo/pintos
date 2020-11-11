@@ -1,9 +1,9 @@
+#include "vm/page.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/palloc.h"
 #include "threads/malloc.h"
 #include "userprog/process.h"
-#include "vm/page.h"
 
 /* Max user stack size. 8MB. */
 #define USER_STACK (8 * 1024 * 1024)
