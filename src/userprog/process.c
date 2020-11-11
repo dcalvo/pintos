@@ -470,7 +470,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       //   pte->file_ofs = ofs;
       //   pte->file_bytes = page_read_bytes;
       // }
-      
+
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
@@ -549,7 +549,7 @@ static bool
 setup_stack (void **esp, char *cmdline) 
 {
   // uint8_t *kpage;
-  struct page_table_entry *pte = page_alloc (((uint8_t *) PHYS_BASE) - PGSIZE, true);
+  struct page_table_entry *pte = page_load (((uint8_t *) PHYS_BASE) - PGSIZE);
   if (!pte)
     return false;
   *esp = PHYS_BASE;
