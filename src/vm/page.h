@@ -2,9 +2,9 @@
 #define PAGE_H
 #include <hash.h>
 
-unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED);
+unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
-           void *aux UNUSED);
+           void *aux);
 
 bool page_load (void *fault_addr);
 static struct page* page_get (void *address);
