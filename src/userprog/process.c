@@ -547,8 +547,8 @@ static bool
 setup_stack (void **esp, char *cmdline) 
 {
   // uint8_t *kpage;
-  struct page_table_entry *stack_pte = page_alloc (((uint8_t *) PHYS_BASE) - PGSIZE, true);
-  if (!stack_pte)
+  struct page_table_entry *pte = page_alloc (((uint8_t *) PHYS_BASE) - PGSIZE, true);
+  if (!pte)
     return false;
   *esp = PHYS_BASE;
   // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
@@ -562,12 +562,11 @@ setup_stack (void **esp, char *cmdline)
   //   }
 
   /* Parse CMDLINE arguments. */
-  struct page_table_entry *argv_pte = page_alloc (((uint8_t *) PHYS_BASE) - 2 * PGSIZE, true);
-  if (!argv_pte) {
-    page_free (stack_pte);
+  const char **argv = (const char**) palloc_get_page (0);
+  if (!argv) {
+    // palloc_free_page (kpage);
     return false;
   }
-  const char **argv = (const char**) argv_pte->addr;
   char *tok, *save_ptr;
   int argc = 0;
 
@@ -576,7 +575,7 @@ setup_stack (void **esp, char *cmdline)
   }
 
   push_argv (argv, argc, esp);
-  page_free(argv);
+  palloc_free_page(argv);
   return true;
 }
 
