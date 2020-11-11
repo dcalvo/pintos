@@ -21,5 +21,6 @@ struct page_table_entry
 
     struct file *file;              /* File page pointer. */
     off_t file_ofs;                 /* File access offset. */
+    size_t file_bytes;              /* File bytes to read. */
 };
 #endif
