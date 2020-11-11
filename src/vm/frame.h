@@ -3,6 +3,7 @@
 
 #include <hash.h>
 #include "vm/page.h"
+#include "threads/thread.h"
 
 struct hash frame_table;
 
