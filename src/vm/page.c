@@ -1,6 +1,9 @@
 #include "threads/thread.h"
-#include "vm/page.h"
 #include "threads/vaddr.h"
+#include "threads/palloc.h"
+#include "threads/malloc.h"
+#include "userprog/process.h"
+#include "vm/page.h"
 
 /* Max user stack size. 8MB. */
 #define USER_STACK (8 * 1024 * 1024)
@@ -27,7 +30,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 
-/* Given an address, load the page into memory and return sucess,
+/* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
 bool
 page_load (void *fault_addr)
@@ -44,7 +47,7 @@ page_load (void *fault_addr)
     if (p == NULL)
         return false;
     
-    // load frame into page
+    return true;
 }
 
 /* Given an address, get the page associated with it or return NULL.
@@ -68,14 +71,26 @@ page_get (void *address)
          and at most 32 bytes away. */
         if (p.addr > (void *) PHYS_BASE - USER_STACK && 
             p.addr <= (void *) t->esp + 32)
-            return page_alloc (p.addr);
+            return page_alloc (p.addr, true);
     }
 
     return NULL;
 }
 
+/* Given an address, attempt to install a frame to act as a page for caller. */
 static struct page*
-page_alloc (void *addres)
+page_alloc (void *address, bool writable)
 {
-    //allocate
+    void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+    void *upage = pg_round_down (address);
+    if (install_page (upage, kpage, writable)) {
+        struct page *p = malloc (sizeof *p);
+        if (p) {
+            p->addr = upage;
+            if (!hash_insert (&thread_current ()->pagetable, &p->hash_elem))
+                return p;
+            free (p);
+        }
+    }
+    return NULL;
 }
