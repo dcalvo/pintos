@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -105,6 +106,9 @@ struct thread
     struct shared_info *shared_info;    /* Info struct about this thread. */
     struct list children;               /* Child processes. */
     struct list fds;                    /* List of file descriptors. */
+
+    struct hash pagetable;             /* Hash table for pagetable. */
+    void *esp;                          /* esp register value at fault time. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
