@@ -465,7 +465,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       if (!pte)
         return false;
 
-      if (read_bytes > 0) {
+      if (page_read_bytes > 0) {
         pte->file = file;
         pte->file_ofs = ofs;
       }

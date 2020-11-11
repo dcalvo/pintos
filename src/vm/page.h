@@ -17,6 +17,7 @@ struct page_table_entry
     struct hash_elem hash_elem;     /* Hash element for page table. */
     bool dirty;                     /* Dirty bit. Set when write. */
     bool accessed;                  /* Accessed bit. Set when read/write. */
+    bool writable;                  /* Writable bit. Set at allocation. */
 
     struct file *file;              /* File page pointer. */
     off_t file_ofs;                 /* File access offset. */

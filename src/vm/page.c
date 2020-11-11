@@ -91,6 +91,7 @@ page_alloc (void *address, bool writable)
         struct frame_table_entry *fte = malloc (sizeof *fte);
         if (pte && fte) {
             pte->addr = upage;
+            pte->writable = writable;
             if (!hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
                 if (!frame_install (fte, pte, kpage))
                     return pte;
