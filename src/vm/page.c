@@ -35,7 +35,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
-bool
+struct page_table_entry*
 page_load (void *fault_addr)
 {
     struct thread *t = thread_current();
@@ -64,7 +64,10 @@ page_load (void *fault_addr)
         return false;
     }
     
-    return install_page (pte->addr, kpage, pte->writable);
+    if(!install_page (pte->addr, kpage, pte->writable))
+        return false;
+    
+    return pte;
 }
 
 /* Given an address, get the page associated with it or return NULL.
