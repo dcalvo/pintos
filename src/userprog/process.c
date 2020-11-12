@@ -528,9 +528,8 @@ push_argv (const char **argv, int argc, void **esp) {
 static bool
 setup_stack (void **esp, char *cmdline) 
 {
-  thread_current ()->esp = PHYS_BASE - PGSIZE; // simulate a page fault addr
-  struct page_table_entry *pte = page_load (((uint8_t *) PHYS_BASE) - PGSIZE);
-  if (!pte)
+  thread_current ()->esp = PHYS_BASE - PGSIZE; // simulate a page fault addr  
+  if (!page_load (((uint8_t *) PHYS_BASE) - PGSIZE))
     return false;
   *esp = PHYS_BASE;
 

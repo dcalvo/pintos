@@ -65,7 +65,7 @@ page_write (struct page_table_entry *pte)
 
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
-struct page_table_entry*
+bool
 page_load (void *fault_addr)
 {
     struct thread *t = thread_current();
@@ -95,7 +95,7 @@ page_load (void *fault_addr)
         return false;
     
     pte->accessed = true;
-    return pte;
+    return true;
 }
 
 /* Read stored data into pages. */
