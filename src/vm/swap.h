@@ -2,6 +2,7 @@
 #define SWAP_H
 
 #include "devices/block.h"
+#include "vm/frame.h"
 
 static struct block *swap_block;
 

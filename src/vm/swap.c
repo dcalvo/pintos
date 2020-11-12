@@ -1,5 +1,4 @@
 #include "vm/swap.h"
-#include "vm/frame.h"
 #include "threads/vaddr.h"
 
 #define SECTORS (PGSIZE / BLOCK_SECTOR_SIZE)
