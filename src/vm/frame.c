@@ -30,6 +30,7 @@ frame_alloc (struct page_table_entry *pte)
     fte->addr = kpage; // store frame addr
     fte->owner = thread_current (); // store frame owner
     fte->pte = pte; // store frame pte
+    lock_init (&fte->lock);
     if (!hash_insert (&frame_table, &fte->elem))
         return fte;
 
@@ -37,7 +38,20 @@ frame_alloc (struct page_table_entry *pte)
     return NULL;
 }
 
+/* Acquire frame lock. */
 struct frame_table_entry* frame_acquire (struct frame_table_entry *fte)
 {
     lock_acquire (&fte->lock);
+}
+
+/* Release frame lock. */
+void frame_release (struct frame_table_entry *fte)
+{
+    lock_release (&fte->lock);
+}
+
+void
+frame_table_init (void)
+{
+    hash_init (&frame_table, frame_hash, frame_less, NULL);
 }

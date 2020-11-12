@@ -5,6 +5,8 @@
 #include "threads/palloc.h"
 #include "threads/malloc.h"
 #include "userprog/process.h"
+#include "filesys/file.h"
+#include <string.h>
 
 /* Max user stack size. 8MB. */
 #define USER_STACK (8 * 1024 * 1024)
@@ -55,11 +57,12 @@ page_load (void *fault_addr)
     if (!fte)
         return false;
     
-    // TODO load data into page
+    /* Load data into the page. */
     pte->fte = fte;
     if (!page_read (pte))
         return false;
     
+    /* Install the page into frame. */
     if(!install_page (pte->addr, fte->addr, pte->writable))
         return false;
     
@@ -70,15 +73,23 @@ page_load (void *fault_addr)
 bool
 page_read (struct page_table_entry *pte)
 {
-
-    frame_acquire (pte->fte);
+    struct frame_table_entry *fte = pte->fte;
+    frame_acquire (fte);
     if (0) {
         return; // TODO swap hook
     } else if (pte->file) {
-        //read from file
+        /* Load from file. */
+        if (file_read_at (pte->file, fte->addr, pte->file_bytes, pte->file_ofs)
+            != (int) pte->file_bytes) {
+                frame_release (fte);
+                return false; 
+            }
+        memset (fte->addr + pte->file_bytes, 0, (PGSIZE - pte->file_bytes));
     } else {
-        // 0 the page
+        memset (fte->addr, 0, PGSIZE);
     }
+    frame_release (fte);
+    return true;
 }
 
 /* Given an address, get the page associated with it or return NULL.

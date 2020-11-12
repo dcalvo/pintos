@@ -24,6 +24,8 @@ bool frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux);
 
 struct hash_elem * frame_alloc (struct page_table_entry *pte);
-bool frame_acquire (struct page_table_entry *pte);
+bool frame_acquire (struct frame_table_entry *pte);
+void frame_release (struct frame_table_entry *fte);
+void frame_table_init (void);
 
 #endif

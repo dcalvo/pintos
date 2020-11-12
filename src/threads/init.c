@@ -99,7 +99,7 @@ pintos_init (void)
   palloc_init (user_page_limit);
   malloc_init ();
   paging_init ();
-  hash_init (&frame_table, frame_hash, frame_less, NULL);
+  frame_table_init ();
 
   /* Segmentation. */
 #ifdef USERPROG
