@@ -92,7 +92,6 @@ page_get (void *address)
         if (pte.addr > PHYS_BASE - USER_STACK && 
             address > t->esp - 32)
             return page_alloc (pte.addr, true);
-        printf("address is truly invalid");
     }
 
     return NULL;

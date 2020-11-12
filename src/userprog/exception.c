@@ -153,7 +153,6 @@ page_fault (struct intr_frame *f)
    // Check if memory address is paged.
    if (user && not_present) {
       thread_current()->esp = f->esp;
-      printf("inside page fault");
       if (!page_load(fault_addr))
          sys_exit(-1);
       else
