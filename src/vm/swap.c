@@ -36,13 +36,14 @@ swap_write (struct frame_table_entry *fte)
     ASSERT (fte);
     ASSERT (lock_held_by_current_thread (&fte->lock));
 
-    for (int i = 0; i < SECTORS_PER_PAGE; i++) {
-        block_write (swap_block, i + fte->pte->sector,
-                    fte->addr + (i * BLOCK_SECTOR_SIZE));
-    }
     int sector = bitmap_scan_and_flip (swap_map, 0, 1, false);
     if ((unsigned) sector == BITMAP_ERROR)
         PANIC ("NO SWAP SLOT AVAILABLE");
+        
+    for (int i = 0; i < SECTORS_PER_PAGE; i++) {
+        block_write (swap_block, i + sector,
+                    fte->addr + (i * BLOCK_SECTOR_SIZE));
+    }
 
     fte->pte->swapped = true;
     fte->pte->sector = sector;
