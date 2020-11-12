@@ -124,24 +124,22 @@ page_get (void *vaddr)
 {
     if (!is_user_vaddr (vaddr))
         return NULL;
-    
-    struct thread *t = thread_current();
-    struct page_table_entry pte;
-    struct hash_elem *elem;
 
+    struct page_table_entry pte;
     pte.addr = (void *) pg_round_down (vaddr);
-    elem = hash_find (&t->page_table, &pte.hash_elem);
+
+    struct thread *t = thread_current();
+    struct hash_elem *elem = hash_find (&t->page_table, &pte.hash_elem);
     if (elem)
-        return hash_entry(elem, struct page_table_entry, hash_elem);
+        return hash_entry (elem, struct page_table_entry, hash_elem);
     else {
         /* Checking that the page address is inside max stack size
          and at most 32 bytes away. */
-        if (pte.addr > PHYS_BASE - USER_STACK && 
-            vaddr >= t->esp - 32)
+        if (PHYS_BASE - USER_STACK <= pte.addr && t->esp - 32 <= vaddr)
             return page_alloc (pte.addr, true);
+        else
+            return NULL;
     }
-
-    return NULL;
 }
 
 /* Given an address, allocate an entry in the page table (without loading) */
