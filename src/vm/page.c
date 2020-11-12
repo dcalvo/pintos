@@ -71,10 +71,6 @@ page_load (void *fault_addr)
     if (!fault_addr)
         return false;
 
-    struct thread *t = thread_current();
-    if (!&t->page_table)
-        return false;
-    
     /* Retrieve (or allocate) the page. */
     struct page_table_entry *pte = page_get (fault_addr);
     if (!pte)
