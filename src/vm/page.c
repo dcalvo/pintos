@@ -132,14 +132,12 @@ page_get (void *vaddr)
     struct hash_elem *elem = hash_find (&t->page_table, &pte.hash_elem);
     if (elem)
         return hash_entry (elem, struct page_table_entry, hash_elem);
-    else {
-        /* Checking that the page address is inside max stack size
-         and at most 32 bytes away. */
-        if (PHYS_BASE - USER_STACK <= pte.addr && t->esp - 32 <= vaddr)
-            return page_alloc (pte.addr, true);
-        else
-            return NULL;
-    }
+    /* Checking that the page address is inside max stack size
+     and at most 32 bytes away. */
+    else if (PHYS_BASE - USER_STACK <= pte.addr && t->esp - 32 <= vaddr)
+        return page_alloc (pte.addr, true);
+    else
+        return NULL;
 }
 
 /* Given an address, allocate an entry in the page table (without loading) */
