@@ -16,6 +16,7 @@
 static struct page_table_entry* page_get (void *address);
 static bool page_read (struct page_table_entry *pte);
 static void page_write (struct page_table_entry *pte);
+static void page_init (struct page_table_entry *pte);
 
 /* NOTE The following two functions (page_hash and page_less) were taken from
 the class project guide! Specifically from A.8.5 Hash Table Examples. */
@@ -154,6 +155,7 @@ page_alloc (void *address, bool writable)
     void *upage = pg_round_down (address);
     struct page_table_entry *pte = malloc (sizeof *pte);
     if (pte) {
+        page_init (pte);
         pte->addr = upage;
         pte->writable = writable;
         if (!hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
@@ -162,6 +164,21 @@ page_alloc (void *address, bool writable)
         free (pte);
     }
     return NULL;
+}
+
+/* Page init. */
+static void
+page_init (struct page_table_entry *pte)
+{
+    pte->dirty = false;
+    pte->accessed = false;
+    
+    pte->file = NULL;
+    pte->file_ofs = 0;
+    pte->file_bytes = 0;
+
+    pte->swapped = false;
+    pte->sector = -1;
 }
 
 /* Frees the page associated with the given address. */
