@@ -141,20 +141,19 @@ page_get (void *vaddr)
 
 /* Given an address, allocate an entry in the page table (without loading) */
 struct page_table_entry*
-page_alloc (void *address, bool writable)
+page_alloc (void *vaddr, bool writable)
 {
-    void *upage = pg_round_down (address);
     struct page_table_entry *pte = malloc (sizeof *pte);
-    if (pte) {
-        page_init (pte);
-        pte->addr = upage;
-        pte->writable = writable;
-        if (!hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
-            return pte;
-        }
+    if (!pte)
+        return NULL;
+    page_init (pte);
+    pte->addr = pg_round_down (vaddr);
+    pte->writable = writable;
+    if (hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
         free (pte);
+        return NULL;
     }
-    return NULL;
+    return pte;
 }
 
 /* Page init. */
