@@ -36,6 +36,19 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
   return a->addr < b->addr;
 }
 
+/* Evict a page and save it to swap. */
+void
+page_save (struct page_table_entry *pte)
+{
+    if (pte->dirty) {
+        swap_write (pte->fte);
+
+    }
+
+    pte->fte = NULL;
+}
+
+
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
 struct page_table_entry*

@@ -23,6 +23,7 @@ struct page_table_entry
     off_t file_ofs;                 /* File access offset. */
     size_t file_bytes;              /* File bytes to read. */
     bool swapped;                   /* True if page is swapped out. */
+    int sector;                     /* Swap sector page is located at. */
 
     struct frame_table_entry *fte;   /* Associated frame table entry. */
     struct hash_elem hash_elem;     /* Hash element for page table. */
