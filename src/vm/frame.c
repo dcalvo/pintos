@@ -1,4 +1,5 @@
 #include "vm/frame.h"
+#include "threads/malloc.h"
 
 /* Returns a hash value for frame f. */
 unsigned
@@ -25,7 +26,7 @@ frame_alloc (struct page_table_entry *pte)
 {
     struct frame_table_entry *fte = malloc (sizeof *fte);
     void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-    if (!fte || !kpage);
+    if (!fte || !kpage)
         return NULL; // TODO evict hook
     
     fte->addr = kpage; // store frame addr
@@ -40,7 +41,7 @@ frame_alloc (struct page_table_entry *pte)
 }
 
 /* Acquire frame lock. */
-struct frame_table_entry*
+void
 frame_acquire (struct frame_table_entry *fte)
 {
     lock_acquire (&fte->lock);
