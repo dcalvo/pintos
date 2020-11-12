@@ -19,7 +19,8 @@ frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
   return a->addr < b->addr;
 }
 
-struct hash_elem *
+/* Allocates a frame for the given page. */
+struct frame_table_entry*
 frame_alloc (struct page_table_entry *pte)
 {
     struct frame_table_entry *fte = malloc (sizeof *fte);
@@ -39,13 +40,15 @@ frame_alloc (struct page_table_entry *pte)
 }
 
 /* Acquire frame lock. */
-struct frame_table_entry* frame_acquire (struct frame_table_entry *fte)
+struct frame_table_entry*
+frame_acquire (struct frame_table_entry *fte)
 {
     lock_acquire (&fte->lock);
 }
 
 /* Release frame lock. */
-void frame_release (struct frame_table_entry *fte)
+void
+frame_release (struct frame_table_entry *fte)
 {
     lock_release (&fte->lock);
 }

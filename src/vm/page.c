@@ -12,6 +12,7 @@
 #define USER_STACK (8 * 1024 * 1024)
 
 static struct page_table_entry* page_get (void *address);
+static bool page_read (struct page_table_entry *pte);
 
 /* NOTE The following two functions (page_hash and page_less) were taken from
 the class project guide! Specifically from A.8.5 Hash Table Examples. */
@@ -70,13 +71,13 @@ page_load (void *fault_addr)
 }
 
 /* Read stored data into pages. */
-bool
+static bool
 page_read (struct page_table_entry *pte)
 {
     struct frame_table_entry *fte = pte->fte;
     frame_acquire (fte);
     if (0) {
-        return; // TODO swap hook
+        return false; // TODO swap hook
     } else if (pte->file) {
         /* Load from file. */
         if (file_read_at (pte->file, fte->addr, pte->file_bytes, pte->file_ofs)
