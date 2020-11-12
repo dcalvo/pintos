@@ -40,7 +40,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 /* Evict a page and save it to swap. */
 void
-page_evict ()
+page_evict (void)
 {
     struct page_table_entry *pte;
     // TODO eviction algo
