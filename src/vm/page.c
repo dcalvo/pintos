@@ -49,7 +49,7 @@ page_evict (void)
     if (pte->dirty)
         page_write (pte);
     
-    pagedir_clear_page (pte->fte->owner->pagedir, pte->addr);
+    pagedir_clear_page (pte->fte->thread->pagedir, pte->addr);
     free (pte->fte);
     pte->fte = NULL;
 }
@@ -87,7 +87,7 @@ page_load (void *fault_addr)
         return false;
     
     /* Install the page into frame. */
-    if(!install_page (pte->addr, fte->addr, pte->writable))
+    if(!install_page (pte->addr, fte->kpage, pte->writable))
         return false;
     
     pte->accessed = true;
@@ -98,23 +98,22 @@ page_load (void *fault_addr)
 static bool
 page_read (struct page_table_entry *pte)
 {
-    struct frame_table_entry *fte = pte->fte;
-    frame_acquire (fte);
-    if (pte->swapped) {
-        swap_read (fte);
-    } else if (pte->file) {
-        /* Load from file. */
-        if (file_read_at (pte->file, fte->addr, pte->file_bytes, pte->file_ofs)
-            != (int) pte->file_bytes) {
-                frame_release (fte);
-                return false; 
-            }
-        memset (fte->addr + pte->file_bytes, 0, (PGSIZE - pte->file_bytes));
-    } else {
-        memset (fte->addr, 0, PGSIZE);
+  struct frame_table_entry *fte = pte->fte;
+  frame_acquire (fte);
+  if (pte->swapped)
+    swap_read (fte);
+  else if (pte->file) {
+    /* Load from file. */
+    if (file_read_at (pte->file, fte->kpage, pte->file_bytes, pte->file_ofs)
+        != (int) pte->file_bytes) {
+      frame_release (fte);
+      return false;
     }
-    frame_release (fte);
-    return true;
+    memset (fte->kpage + pte->file_bytes, 0, (PGSIZE - pte->file_bytes));
+  } else
+    memset (fte->kpage, 0, PGSIZE);
+  frame_release (fte);
+  return true;
 }
 
 /* Given an address, get the page associated with it or return NULL.
