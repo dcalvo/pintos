@@ -8,12 +8,14 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include <string.h>
+#include "userprog/pagedir.h"
 
 /* Max user stack size. 8MB. */
 #define USER_STACK (8 * 1024 * 1024)
 
 static struct page_table_entry* page_get (void *address);
 static bool page_read (struct page_table_entry *pte);
+static void page_write (struct page_table_entry *pte);
 
 /* NOTE The following two functions (page_hash and page_less) were taken from
 the class project guide! Specifically from A.8.5 Hash Table Examples. */
@@ -38,16 +40,27 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 /* Evict a page and save it to swap. */
 void
-page_save (struct page_table_entry *pte)
+page_evict ()
 {
-    if (pte->dirty) {
-        swap_write (pte->fte);
-
-    }
-
+    struct page_table_entry *pte;
+    // TODO eviction algo
+    
+    if (pte->dirty)
+        page_write (pte->fte);
+    
+    pagedir_clear_page (pte->fte->owner, pte->addr);
+    free (pte->fte);
     pte->fte = NULL;
 }
 
+/* Write data to swap. */
+static void
+page_write (struct page_table_entry *pte)
+{
+    frame_acquire (pte->fte);
+    swap_write (pte->fte);
+    frame_release (pte->fte);
+}
 
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */

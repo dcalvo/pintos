@@ -38,6 +38,8 @@ swap_write (struct frame_table_entry *fte)
                     fte->addr + (i * BLOCK_SECTOR_SIZE));
     }
     int sector = bitmap_scan_and_flip (swap_map, 0, 1, false);
+    if (sector == BITMAP_ERROR)
+        PANIC ("NO SWAP SLOT AVAILABLE");
 
     fte->pte->swapped = true;
     fte->pte->sector = sector;

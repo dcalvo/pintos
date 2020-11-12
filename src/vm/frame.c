@@ -1,4 +1,5 @@
 #include "vm/frame.h"
+#include "vm/page.h"
 #include "threads/malloc.h"
 
 /* Returns a hash value for frame f. */
@@ -24,10 +25,12 @@ frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
 struct frame_table_entry*
 frame_alloc (struct page_table_entry *pte)
 {
-    struct frame_table_entry *fte = malloc (sizeof *fte);
     void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-    if (!fte || !kpage)
-        return NULL; // TODO evict hook
+    if (!kpage)
+        page_evict ();
+    struct frame_table_entry *fte = malloc (sizeof *fte);
+    if (!fte)
+        return NULL;
     
     fte->addr = kpage; // store frame addr
     fte->owner = thread_current (); // store frame owner
