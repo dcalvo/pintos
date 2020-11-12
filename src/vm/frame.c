@@ -1,6 +1,6 @@
+#include "threads/malloc.h"
 #include "vm/frame.h"
 #include "vm/page.h"
-#include "threads/malloc.h"
 
 void
 frame_table_init (void)

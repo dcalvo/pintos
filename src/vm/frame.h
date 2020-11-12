@@ -2,10 +2,10 @@
 #define FRAME_H
 
 #include <hash.h>
-#include "vm/page.h"
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "threads/palloc.h"
+#include "vm/page.h"
 
 struct hash frame_table;
 
