@@ -548,28 +548,17 @@ push_argv (const char **argv, int argc, void **esp) {
 static bool
 setup_stack (void **esp, char *cmdline) 
 {
-  // uint8_t *kpage;
-  thread_current ()->esp = PHYS_BASE - PGSIZE;
+  thread_current ()->esp = PHYS_BASE - PGSIZE; // simulate a page fault addr
   struct page_table_entry *pte = page_load (((uint8_t *) PHYS_BASE) - PGSIZE);
   if (!pte)
     return false;
   *esp = PHYS_BASE;
-  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  // if (kpage != NULL) 
-  //   {
-  //     success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-  //     if (success)
-  //       *esp = PHYS_BASE;
-  //     else
-  //       palloc_free_page (kpage);
-  //   }
 
   /* Parse CMDLINE arguments. */
   const char **argv = (const char**) palloc_get_page (0);
-  if (!argv) {
-    // palloc_free_page (kpage);
+  if (!argv)
     return false;
-  }
+  
   char *tok, *save_ptr;
   int argc = 0;
 
