@@ -68,20 +68,20 @@ otherwise return a load failure and kill thread. */
 bool
 page_load (void *fault_addr)
 {
-    struct thread *t = thread_current();
-    struct page_table_entry *pte;
-    struct frame_table_entry *fte;
+    if (!fault_addr)
+        return false;
 
-    if (!&t->page_table || !fault_addr)
+    struct thread *t = thread_current();
+    if (!&t->page_table)
         return false;
     
     /* Retrieve (or allocate) the page. */
-    pte = page_get (fault_addr);
+    struct page_table_entry *pte = page_get (fault_addr);
     if (!pte)
         return false;
     
     /* Allocate a frame. */
-    fte = frame_alloc (pte);
+    struct frame_table_entry *fte = frame_alloc (pte);
     if (!fte)
         return false;
     
@@ -124,16 +124,16 @@ page_read (struct page_table_entry *pte)
 /* Given an address, get the page associated with it or return NULL.
 Allocates new pages as necessary. */
 static struct page_table_entry*
-page_get (void *address)
+page_get (void *vaddr)
 {
-    if (address >= PHYS_BASE)
+    if (!is_user_vaddr (vaddr))
         return NULL;
     
     struct thread *t = thread_current();
     struct page_table_entry pte;
     struct hash_elem *elem;
 
-    pte.addr = (void *) pg_round_down (address);
+    pte.addr = (void *) pg_round_down (vaddr);
     elem = hash_find (&t->page_table, &pte.hash_elem);
     if (elem)
         return hash_entry(elem, struct page_table_entry, hash_elem);
@@ -141,7 +141,7 @@ page_get (void *address)
         /* Checking that the page address is inside max stack size
          and at most 32 bytes away. */
         if (pte.addr > PHYS_BASE - USER_STACK && 
-            address >= t->esp - 32)
+            vaddr >= t->esp - 32)
             return page_alloc (pte.addr, true);
     }
 
