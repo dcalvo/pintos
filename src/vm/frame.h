@@ -4,6 +4,8 @@
 #include <hash.h>
 #include "vm/page.h"
 #include "threads/thread.h"
+#include "threads/synch.h"
+#include "threads/palloc.h"
 
 struct hash frame_table;
 
@@ -14,13 +16,14 @@ struct frame_table_entry
     struct page_table_entry *pte;   /* Page table entry. */
 
     struct hash_elem elem;          /* Element for frame table. */
+    struct lock lock;               /* Lock. */
 };
 
 unsigned frame_hash (const struct hash_elem *f_, void *aux);
 bool frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux);
 
-struct hash_elem * frame_allocate (struct frame_table_entry *fte,
-         struct page_table_entry *pte, void *kpage);
+struct hash_elem * frame_alloc (struct page_table_entry *pte);
+bool frame_acquire (struct page_table_entry *pte);
 
 #endif

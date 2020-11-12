@@ -1,6 +1,7 @@
 #ifndef PAGE_H
 #define PAGE_H
 #include <hash.h>
+#include "vm/frame.h"
 #include "filesys/off_t.h"
 
 unsigned page_hash (const struct hash_elem *p_, void *aux);
@@ -14,7 +15,6 @@ void page_free (void *address);
 struct page_table_entry
 {
     void *addr;                     /* Virtual address. */
-    struct hash_elem hash_elem;     /* Hash element for page table. */
     bool dirty;                     /* Dirty bit. Set when write. */
     bool accessed;                  /* Accessed bit. Set when read/write. */
     bool writable;                  /* Writable bit. Set at allocation. */
@@ -22,5 +22,8 @@ struct page_table_entry
     struct file *file;              /* File page pointer. */
     off_t file_ofs;                 /* File access offset. */
     size_t file_bytes;              /* File bytes to read. */
+
+    struct frame_table_entry *fte;   /* Associated frame table entry. */
+    struct hash_elem hash_elem;     /* Hash element for page table. */
 };
 #endif

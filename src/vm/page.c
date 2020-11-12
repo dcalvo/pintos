@@ -40,34 +40,45 @@ page_load (void *fault_addr)
 {
     struct thread *t = thread_current();
     struct page_table_entry *pte;
+    struct frame_table_entry *fte;
 
-    if (&t->page_table == NULL)
-        return false;
-    if (!fault_addr)
+    if (!&t->page_table || !fault_addr)
         return false;
     
+    /* Retrieve (or allocate) the page. */
     pte = page_get (fault_addr);
     if (!pte)
         return false;
     
-    void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-    if (!kpage)
+    /* Allocate a frame. */
+    fte = frame_alloc (pte);
+    if (!fte)
         return false;
     
     // TODO load data into page
-
-    struct frame_table_entry *fte = malloc (sizeof *fte);
-    if (!fte)
+    pte->fte = fte;
+    if (!page_read (pte))
         return false;
-    if (frame_allocate(fte, pte, kpage) != NULL) {
-        free (fte);
-        return false;
-    }
     
-    if(!install_page (pte->addr, kpage, pte->writable))
+    if(!install_page (pte->addr, fte->addr, pte->writable))
         return false;
     
     return pte;
+}
+
+/* Read stored data into pages. */
+bool
+page_read (struct page_table_entry *pte)
+{
+
+    frame_acquire (pte->fte);
+    if (0) {
+        return; // TODO swap hook
+    } else if (pte->file) {
+        //read from file
+    } else {
+        // 0 the page
+    }
 }
 
 /* Given an address, get the page associated with it or return NULL.
