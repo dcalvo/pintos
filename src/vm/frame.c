@@ -13,7 +13,7 @@ unsigned
 frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame_table_entry *f = hash_entry (f_, struct frame_table_entry,
-                                                  elem);
+                                                  hash_elem);
   return hash_bytes (&f->kpage, sizeof f->kpage);
 }
 
@@ -23,9 +23,9 @@ frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux UNUSED)
 {
   const struct frame_table_entry *a = hash_entry (a_, struct frame_table_entry,
-                                                  elem);
+                                                  hash_elem);
   const struct frame_table_entry *b = hash_entry (b_, struct frame_table_entry,
-                                                  elem);
+                                                  hash_elem);
   return a->kpage < b->kpage;
 }
 
@@ -43,7 +43,7 @@ frame_alloc (struct page_table_entry *pte)
   fte->thread = thread_current (); // store frame thread
   fte->pte = pte; // store frame pte
   lock_init (&fte->lock);
-  if (hash_insert (&frame_table, &fte->elem)) {
+  if (hash_insert (&frame_table, &fte->hash_elem)) {
     free (fte);
     free (kpage);
     return NULL;
