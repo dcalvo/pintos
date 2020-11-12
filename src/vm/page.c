@@ -125,10 +125,9 @@ page_get (void *vaddr)
     if (!is_user_vaddr (vaddr))
         return NULL;
 
+    struct thread *t = thread_current();
     struct page_table_entry pte;
     pte.addr = (void *) pg_round_down (vaddr);
-
-    struct thread *t = thread_current();
     struct hash_elem *elem = hash_find (&t->page_table, &pte.hash_elem);
     if (elem)
         return hash_entry (elem, struct page_table_entry, hash_elem);
