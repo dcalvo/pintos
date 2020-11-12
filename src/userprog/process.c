@@ -549,7 +549,7 @@ static bool
 setup_stack (void **esp, char *cmdline) 
 {
   // uint8_t *kpage;
-  thread_current ()->esp = PHYS_BASE;
+  thread_current ()->esp = PHYS_BASE - PGSIZE;
   struct page_table_entry *pte = page_load (((uint8_t *) PHYS_BASE) - PGSIZE);
   if (!pte)
     return false;
