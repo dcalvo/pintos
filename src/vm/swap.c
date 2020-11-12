@@ -1,6 +1,9 @@
 #include "vm/swap.h"
 #include "threads/vaddr.h"
 
+static struct block *swap_block;
+static struct bitmap *swap_map; // false is swap space available
+
 #define SECTORS_PER_PAGE (PGSIZE / BLOCK_SECTOR_SIZE)
 
 void

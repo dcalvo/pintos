@@ -46,9 +46,9 @@ page_evict (void)
     // TODO eviction algo
     
     if (pte->dirty)
-        page_write (pte->fte);
+        page_write (pte);
     
-    pagedir_clear_page (pte->fte->owner, pte->addr);
+    pagedir_clear_page (pte->fte->owner->pagedir, pte->addr);
     free (pte->fte);
     pte->fte = NULL;
 }
