@@ -18,6 +18,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (char *cmdline, void (**eip) (void), void **esp);
@@ -273,6 +274,9 @@ load (char *cmdline, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  /* Allocate and activate supplemental page table. */
+  hash_init (&t->page_table, page_hash, page_less, NULL);
+
   /* Extract FILE_NAME from CMDLINE. */
   file_name = palloc_get_page (0);
   if (file_name == NULL)
@@ -381,8 +385,6 @@ load (char *cmdline, void (**eip) (void), void **esp)
 
 /* load() helpers. */
 
-static bool install_page (void *upage, void *kpage, bool writable);
-
 /* Checks whether PHDR describes a valid, loadable segment in
    FILE and returns true if so, false otherwise. */
 static bool
@@ -450,7 +452,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-  file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
@@ -459,29 +460,21 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
+      struct page_table_entry *pte = page_alloc (upage, writable);
+      if (!pte)
         return false;
 
-      /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      /* Populate page table entry. */
+      if (page_read_bytes > 0) {
+        pte->file = file;
+        pte->file_ofs = ofs;
+        pte->file_bytes = page_read_bytes;
+      }
 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += page_read_bytes;
       upage += PGSIZE;
     }
   return true;
@@ -535,25 +528,17 @@ push_argv (const char **argv, int argc, void **esp) {
 static bool
 setup_stack (void **esp, char *cmdline) 
 {
-  uint8_t *kpage;
-  bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
-    }
+  thread_current ()->esp = PHYS_BASE - PGSIZE; // simulate a page fault addr
+  struct page_table_entry *pte = page_load (((uint8_t *) PHYS_BASE) - PGSIZE);
+  if (!pte)
+    return false;
+  *esp = PHYS_BASE;
 
   /* Parse CMDLINE arguments. */
   const char **argv = (const char**) palloc_get_page (0);
-  if (!argv) {
-    palloc_free_page (kpage);
+  if (!argv)
     return false;
-  }
+  
   char *tok, *save_ptr;
   int argc = 0;
 
@@ -563,7 +548,7 @@ setup_stack (void **esp, char *cmdline)
 
   push_argv (argv, argc, esp);
   palloc_free_page(argv);
-  return success;
+  return true;
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
@@ -575,7 +560,7 @@ setup_stack (void **esp, char *cmdline)
    with palloc_get_page().
    Returns true on success, false if UPAGE is already mapped or
    if memory allocation fails. */
-static bool
+bool
 install_page (void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current ();
