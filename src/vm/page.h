@@ -29,4 +29,5 @@ struct page_table_entry
     struct frame_table_entry *fte;   /* Associated frame table entry. */
     struct hash_elem hash_elem;     /* Hash element for page table. */
 };
+
 #endif
