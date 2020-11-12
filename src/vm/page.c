@@ -1,5 +1,6 @@
 #include "vm/page.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/palloc.h"
@@ -35,7 +36,6 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
   return a->addr < b->addr;
 }
 
-
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
 struct page_table_entry*
@@ -67,6 +67,7 @@ page_load (void *fault_addr)
     if(!install_page (pte->addr, fte->addr, pte->writable))
         return false;
     
+    pte->accessed = true;
     return pte;
 }
 
@@ -76,8 +77,8 @@ page_read (struct page_table_entry *pte)
 {
     struct frame_table_entry *fte = pte->fte;
     frame_acquire (fte);
-    if (0) {
-        return false; // TODO swap hook
+    if (pte->swapped) {
+        swap_read (fte);
     } else if (pte->file) {
         /* Load from file. */
         if (file_read_at (pte->file, fte->addr, pte->file_bytes, pte->file_ofs)
