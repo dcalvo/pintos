@@ -41,7 +41,7 @@ page_load (void *fault_addr)
     struct thread *t = thread_current();
     struct page_table_entry *pte;
 
-    if (&t->page_table == NULL || hash_empty (&t->page_table))
+    if (&t->page_table == NULL)
         return false;
     if (!fault_addr)
         return false;
