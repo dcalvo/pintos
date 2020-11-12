@@ -31,16 +31,15 @@ frame_alloc (struct page_table_entry *pte)
     struct frame_table_entry *fte = malloc (sizeof *fte);
     if (!fte)
         return NULL;
-    
     fte->addr = kpage; // store frame addr
     fte->owner = thread_current (); // store frame owner
     fte->pte = pte; // store frame pte
     lock_init (&fte->lock);
-    if (!hash_insert (&frame_table, &fte->elem))
-        return fte;
-
-    free (fte);
-    return NULL;
+    if (hash_insert (&frame_table, &fte->elem)) {
+        free (fte);
+        return NULL;
+    }
+    return fte;
 }
 
 /* Acquire frame lock. */
