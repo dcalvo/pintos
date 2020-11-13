@@ -51,7 +51,7 @@ static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close (int fd);
 static mapid_t mmap (int fd, void *addr);
-static void munmap (mapid_t mapping)
+static void munmap (mapid_t mapping);
 
 void
 syscall_init (void) 
