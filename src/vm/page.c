@@ -72,7 +72,7 @@ static void
 page_write (struct page_table_entry *pte)
 {
     frame_acquire (pte->fte);
-    if (pte->mapped){
+    if (pte->mapped && pte->file){
         file_write_at (pte->file, pte->fte->addr, pte->file_bytes, 
             pte->file_ofs);
         pte->mapped = false;
