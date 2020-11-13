@@ -338,11 +338,12 @@ sys_close (int fd_to_close)
 static mapid_t
 mmap (int fd, void *addr)
 {
-  ASSERT (fd > 1); // 0 and 1 reserved for stdio
-
+  if (fd == 0 || fd == 1) // 0 and 1 reserved for stdio
+    return MAP_FAILED;
+  
   uint8_t *upage = addr;
-  ASSERT (upage != 0);
-  ASSERT (pg_ofs(upage) % PGSIZE == 0);
+  if (!upage || pg_ofs(upage) % PGSIZE != 0)
+    return MAP_FAILED;
 
   /* Get file statistics. */
   struct file *file = fetch_file (fd);
