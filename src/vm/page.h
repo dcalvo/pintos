@@ -11,7 +11,7 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 struct page_table_entry* page_load (void *fault_addr);
 struct page_table_entry* page_alloc (void *address, bool writable);
 void page_free (void *address);
-void page_evict (void);
+void *page_evict (void);
 
 struct page_table_entry
 {

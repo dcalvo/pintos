@@ -40,18 +40,27 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 /* Evict a page and save it to swap. */
-void
+void *
 page_evict (void)
 {
     struct page_table_entry *pte;
-    // TODO eviction algo
     
+    /* Uninstall the frame. */
+    pte = frame_evict ();
+    pte->fte = NULL;
+
+    /* Write to swap if necessary. */
     if (pte->dirty)
         page_write (pte);
     
+    /* Re-enable page faults for this address. */
     pagedir_clear_page (pte->fte->owner->pagedir, pte->addr);
-    free (pte->fte);
-    pte->fte = NULL;
+
+    /* Try to allocate another page for the caller again. Must succeed. */
+    void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+    if (!kpage)
+        PANIC ("PAGE EVICTION FAILED");
+    return kpage;
 }
 
 /* Write data to swap. */
@@ -91,8 +100,10 @@ page_load (void *fault_addr)
         return false;
     
     /* Install the page into frame. */
-    if(!install_page (pte->addr, fte->addr, pte->writable))
+    if(!install_page (pte->addr, fte->addr, pte->writable)) {
+        frame_free (fte);
         return false;
+    }
     
     pte->accessed = true;
     return pte;
@@ -104,7 +115,7 @@ page_read (struct page_table_entry *pte)
 {
     struct frame_table_entry *fte = pte->fte;
     frame_acquire (fte);
-    if (pte->swapped) {
+    if (pte->swapped != -1) {
         swap_read (fte);
     } else if (pte->file) {
         /* Load from file. */
@@ -179,13 +190,4 @@ page_init (struct page_table_entry *pte)
 
     pte->swapped = false;
     pte->sector = -1;
-}
-
-/* Frees the page associated with the given address. */
-void page_free (void *address)
-{
-    struct page_table_entry *pte = page_get (address);
-    ASSERT (pte)
-
-    // TODO free page and frame
 }
