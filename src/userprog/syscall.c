@@ -35,6 +35,7 @@ struct mapping
 };
 
 static void syscall_handler (struct intr_frame *);
+static void free_mapping (struct mapping *mapping);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
 static void validate_addr (const void *addr);
@@ -392,9 +393,42 @@ mmap (int fd, void *addr)
 
 /* Implementation of SYS_MUNMAP syscall. */
 static void
-munmap (mapid_t mapping)
+munmap (mapid_t mapping_id)
 {
+  struct list *mappings = &thread_current ()->mappings;
 
+  if (!list_empty (mappings))
+  {
+    for (struct list_elem *it = list_front (mappings);
+      it != list_end (mappings); it = list_next (it))
+    {
+      struct mapping *mapping = list_entry (it, struct mapping, elem);
+      if (mapping->id == mapping_id)
+      {
+        free_mapping (mapping);
+        break;
+      }
+    }
+  }
+}
+
+static void
+free_mapping (struct mapping *mapping)
+{
+  struct list *mapped_pages = &mapping->mapped_pages;
+  if (!list_empty (mapped_pages))
+  {
+    for (struct list_elem *it = list_front (mapped_pages);
+      it != list_end (mapped_pages); it = list_next (it))
+    {
+      struct page_table_entry *pte = list_entry (it, struct page_table_entry,
+        list_elem);
+      page_evict (pte); // write to swap, remove from pd, uninstall the frame
+      free (pte); // delete supplemental pte
+    }
+  }
+
+  free (mapping);
 }
 
 /* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */

@@ -34,8 +34,12 @@ struct frame_table_entry*
 frame_alloc (struct page_table_entry *pte)
 {
     void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-    if (!kpage)
-        kpage = page_evict ();
+    if (!kpage) {
+        page_evict (NULL);
+        kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+        if (!kpage)
+            PANIC ("PAGE EVICTION FAILED");
+    }
     struct frame_table_entry *fte = malloc (sizeof *fte);
     if (!fte)
         return NULL;

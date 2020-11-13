@@ -40,13 +40,12 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 /* Evict a page and save it to swap. */
-void *
-page_evict (void)
+void
+page_evict (struct page_table_entry *pte)
 {
-    struct page_table_entry *pte;
-    
     /* Locate the frame victim. */
-    pte = frame_victim ();
+    if (!pte)
+        pte = frame_victim ();
 
     /* Write to swap if necessary. */
     pte->dirty = pagedir_is_dirty (pte->owner->pagedir, pte->addr) ? true : false;
@@ -59,12 +58,6 @@ page_evict (void)
     /* Uninstall the frame. */
     frame_free (pte->fte);
     pte->fte = NULL;
-
-    /* Try to allocate another page for the caller again. Must succeed. */
-    void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-    if (!kpage)
-        PANIC ("PAGE EVICTION FAILED");
-    return kpage;
 }
 
 /* Write data to swap. */
