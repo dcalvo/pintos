@@ -8,6 +8,7 @@
 #include "devices/input.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
@@ -49,6 +50,8 @@ static int sys_write (int fd, const void *buffer, unsigned size);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close (int fd);
+static mapid_t mmap (int fd, void *addr);
+static void munmap (mapid_t mapping)
 
 void
 syscall_init (void) 
@@ -332,7 +335,7 @@ sys_close (int fd_to_close)
 }
 
 /* Implementation of SYS_MMAP syscall. */
-mapid_t
+static mapid_t
 mmap (int fd, void *addr)
 {
   ASSERT (fd > 1); // 0 and 1 reserved for stdio
@@ -359,10 +362,8 @@ mmap (int fd, void *addr)
   while (read_bytes > 0) 
     {
       /* Calculate how to fill this page.
-         We will read PAGE_READ_BYTES bytes from FILE
-         and zero the final PAGE_ZERO_BYTES bytes. */
+         We will read PAGE_READ_BYTES bytes from FILE. */
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-      size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       struct page_table_entry *pte = page_alloc (upage, writable);
       if (!pte)
@@ -385,7 +386,8 @@ mmap (int fd, void *addr)
 }
 
 /* Implementation of SYS_MUNMAP syscall. */
-void munmap (mapid_t mapping)
+static void
+munmap (mapid_t mapping)
 {
 
 }
