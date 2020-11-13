@@ -122,11 +122,11 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_MMAP:
       fetch_args (f, argv, 2);
-      sys_mmap (); // TODO
+      mmap (argv[0], (void *) argv[1]);
       break;
     case SYS_MUNMAP:
       fetch_args (f, argv, 1);
-      sys_munmap (); // TODO
+      munmap (argv[0]);
       break;
     case SYS_CHDIR:
       break;
