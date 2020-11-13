@@ -70,7 +70,7 @@ frame_release (struct frame_table_entry *fte)
     The hands of the clock are placed randomly somewhere in the frame table.
     Distance between two hands is total # of frames / HAND_SPREAD pages.*/
 #define HAND_SPREAD (4)
-static struct page_table_entry *
+struct page_table_entry *
 frame_evict (void)
 {
     lock_acquire (&frame_table_lock);

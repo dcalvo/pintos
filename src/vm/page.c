@@ -115,7 +115,7 @@ page_read (struct page_table_entry *pte)
 {
     struct frame_table_entry *fte = pte->fte;
     frame_acquire (fte);
-    if (pte->swapped != -1) {
+    if (pte->swapped) {
         swap_read (fte);
     } else if (pte->file) {
         /* Load from file. */
