@@ -156,6 +156,11 @@ sys_exit (int status)
     shared_info->has_exited = true;
     shared_info->exit_code = status;
   }
+  while (!list_empty (&t->mappings))
+  {
+    free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
+      elem));
+  }
   printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
 }
@@ -416,7 +421,7 @@ static void
 free_mapping (struct mapping *mapping)
 {
   struct list *mapped_pages = &mapping->mapped_pages;
-  
+
   while (!list_empty (mapped_pages)) {
     struct page_table_entry *pte = list_entry (list_pop_front (mapped_pages),
       struct page_table_entry, list_elem);
