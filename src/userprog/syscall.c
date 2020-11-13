@@ -345,6 +345,8 @@ mmap (int fd, void *addr)
   ASSERT (pg_ofs(upage) % PGSIZE == 0);
 
   struct file *file = fetch_file (fd);
+  if (!file)
+    return MAP_FAILED;
   uint32_t read_bytes = file_length (file);
   ASSERT (read_bytes > 0);
   bool writable = file_writable (file);
