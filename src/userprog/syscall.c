@@ -350,7 +350,7 @@ mmap (int fd, void *addr)
   if (!file)
     return MAP_FAILED;
   uint32_t read_bytes = file_length (file);
-  if (!read_bytes > 0)
+  if (!(read_bytes > 0))
     return MAP_FAILED;
   bool writable = file_writable (file);
   off_t ofs = 0;
