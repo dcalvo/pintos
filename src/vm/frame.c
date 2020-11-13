@@ -85,7 +85,7 @@ frame_evict (void)
     struct hash_iterator it;
     
     hash_first (&it, &frame_table);
-    second_fte = hash_entry (hash_cur (&it), struct frame_table_entry, elem);
+    second_fte = hash_entry (hash_next (&it), struct frame_table_entry, elem);
     for (int i = 0; i < frame_table_size / HAND_SPREAD; i++)
         hash_next (&it);
     first_fte = hash_entry (hash_cur (&it), struct frame_table_entry, elem);
