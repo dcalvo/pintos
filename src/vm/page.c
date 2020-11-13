@@ -54,7 +54,7 @@ page_evict (void)
         page_write (pte);
     
     /* Re-enable page faults for this address. */
-    pagedir_clear_page (pte->fte->owner->pagedir, pte->addr);
+    pagedir_clear_page (pte->owner->pagedir, pte->addr);
 
     /* Try to allocate another page for the caller again. Must succeed. */
     void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);
@@ -187,6 +187,7 @@ page_alloc (void *address, bool writable)
 static void
 page_init (struct page_table_entry *pte)
 {
+    pte->owner = thread_current ();
     pte->dirty = false;
     pte->accessed = false;
     

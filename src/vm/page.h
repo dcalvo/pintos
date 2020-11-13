@@ -16,6 +16,7 @@ void *page_evict (void);
 struct page_table_entry
 {
     void *addr;                     /* Virtual address. */
+    struct thread *owner;           /* Owner thread of the page. */
     bool dirty;                     /* Dirty bit. Set when write. */
     bool accessed;                  /* Accessed bit. Set when read/write. */
     bool writable;                  /* Writable bit. Set at allocation. */
