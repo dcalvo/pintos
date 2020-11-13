@@ -416,16 +416,12 @@ static void
 free_mapping (struct mapping *mapping)
 {
   struct list *mapped_pages = &mapping->mapped_pages;
-  if (!list_empty (mapped_pages))
-  {
-    for (struct list_elem *it = list_front (mapped_pages);
-      it != list_end (mapped_pages); it = list_next (it))
-    {
-      struct page_table_entry *pte = list_entry (it, struct page_table_entry,
-        list_elem);
+  
+  while (!list_empty (mapped_pages)) {
+    struct page_table_entry *pte = list_entry (list_pop_front (mapped_pages),
+      struct page_table_entry, list_elem);
       page_evict (pte); // write to swap, remove from pd, uninstall the frame
       free (pte); // delete supplemental pte
-    }
   }
 
   free (mapping);
