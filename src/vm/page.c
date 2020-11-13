@@ -50,6 +50,7 @@ page_evict (void)
     pte->fte = NULL;
 
     /* Write to swap if necessary. */
+    pte->dirty = pagedir_is_dirty (pte->owner->pagedir, pte->addr) ? true : false;
     if (pte->dirty)
         page_write (pte);
     

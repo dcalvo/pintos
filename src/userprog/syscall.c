@@ -344,6 +344,7 @@ mmap (int fd, void *addr)
   ASSERT (upage != 0);
   ASSERT (pg_ofs(upage) % PGSIZE == 0);
 
+  /* Get file statistics. */
   struct file *file = fetch_file (fd);
   if (!file)
     return MAP_FAILED;
