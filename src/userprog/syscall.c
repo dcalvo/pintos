@@ -13,15 +13,25 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "vm/page.h"
+#include "vm/mapid_t.h"
 
 struct lock filesys;
 
 struct fd
-  {
-    int fd;
-    struct file *file;
-    struct list_elem elem;
-  };
+{
+  int fd;
+  struct file *file;
+  struct list_elem elem;
+};
+
+struct mapping
+{
+  mapid_t id;
+  struct file *file;
+  struct list mapped_pages;
+  struct list_elem elem;
+};
 
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
@@ -108,8 +118,12 @@ syscall_handler (struct intr_frame *f)
       sys_close (argv[0]);
       break;
     case SYS_MMAP:
+      fetch_args (f, argv, 2);
+      sys_mmap (); // TODO
       break;
     case SYS_MUNMAP:
+      fetch_args (f, argv, 1);
+      sys_munmap (); // TODO
       break;
     case SYS_CHDIR:
       break;
@@ -315,6 +329,65 @@ sys_close (int fd_to_close)
     }
   }
   lock_release (&filesys);
+}
+
+/* Implementation of SYS_MMAP syscall. */
+mapid_t
+mmap (int fd, void *addr)
+{
+  ASSERT (fd > 1); // 0 and 1 reserved for stdio
+
+  uint8_t *upage = addr;
+  ASSERT (upage != 0);
+  ASSERT (pg_ofs(upage) % PGSIZE == 0);
+
+  struct file *file = fetch_file (fd);
+  uint32_t read_bytes = file_length (file);
+  ASSERT (read_bytes > 0);
+  bool writable = file_writable (file);
+  off_t ofs = 0;
+
+  /* Set up bookkeeping for mapped memory. */
+  struct list *mappings = &thread_current ()->mappings;
+  struct mapping *mapping = malloc (sizeof *mapping);
+  mapping->id = list_empty (mappings) ? 0 
+    : list_entry (list_back (mappings), struct mapping, elem)->id + 1;
+  mapping->file = file;
+  list_init (&mapping->mapped_pages);
+  list_push_back (&thread_current ()->mappings, &mapping->elem);
+
+  while (read_bytes > 0) 
+    {
+      /* Calculate how to fill this page.
+         We will read PAGE_READ_BYTES bytes from FILE
+         and zero the final PAGE_ZERO_BYTES bytes. */
+      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+      size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+      struct page_table_entry *pte = page_alloc (upage, writable);
+      if (!pte)
+        return MAP_FAILED;
+
+      /* Populate page table entry. */
+      pte->file = file;
+      pte->file_ofs = ofs;
+      pte->file_bytes = page_read_bytes;
+      pte->mapped = true;
+      list_push_back (&mapping->mapped_pages, &pte->list_elem);
+
+      /* Advance. */
+      read_bytes -= page_read_bytes;
+      ofs += page_read_bytes;
+      upage += PGSIZE;
+    }
+
+  return mapping->id;
+}
+
+/* Implementation of SYS_MUNMAP syscall. */
+void munmap (mapid_t mapping)
+{
+
 }
 
 /* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */

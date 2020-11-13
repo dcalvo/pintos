@@ -68,7 +68,13 @@ static void
 page_write (struct page_table_entry *pte)
 {
     frame_acquire (pte->fte);
-    swap_write (pte->fte);
+    if (pte->mapped){
+        file_write_at (pte->file, pte->fte->addr, pte->file_bytes, 
+            pte->file_ofs);
+        pte->mapped = false;
+    }
+    else
+        swap_write (pte->fte);
     frame_release (pte->fte);
 }
 
@@ -187,6 +193,7 @@ page_init (struct page_table_entry *pte)
     pte->file = NULL;
     pte->file_ofs = 0;
     pte->file_bytes = 0;
+    pte->mapped = MAP_FAILED;
 
     pte->swapped = false;
     pte->sector = -1;
