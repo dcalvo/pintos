@@ -355,6 +355,8 @@ mmap (int fd, void *addr)
   struct file *file = fetch_file (fd);
   if (!file)
     return MAP_FAILED;
+  else
+    file = file_reopen (file);
   uint32_t read_bytes = file_length (file);
   if (!(read_bytes > 0))
     return MAP_FAILED;
