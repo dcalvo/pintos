@@ -122,7 +122,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_MMAP:
       fetch_args (f, argv, 2);
-      mmap (argv[0], (void *) argv[1]);
+      f->eax = mmap (argv[0], (void *) argv[1]);
       break;
     case SYS_MUNMAP:
       fetch_args (f, argv, 1);
