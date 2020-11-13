@@ -28,7 +28,7 @@ struct frame_table_entry* frame_alloc (struct page_table_entry *pte);
 void frame_acquire (struct frame_table_entry *fte);
 void frame_release (struct frame_table_entry *fte);
 void frame_table_init (void);
-struct page_table_entry *frame_evict (void);
+struct page_table_entry *frame_victim (void);
 void frame_free (struct frame_table_entry *fte);
 
 #endif

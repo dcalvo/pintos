@@ -45,9 +45,8 @@ page_evict (void)
 {
     struct page_table_entry *pte;
     
-    /* Uninstall the frame. */
-    pte = frame_evict ();
-    pte->fte = NULL;
+    /* Locate the frame victim. */
+    pte = frame_victim ();
 
     /* Write to swap if necessary. */
     pte->dirty = pagedir_is_dirty (pte->owner->pagedir, pte->addr) ? true : false;
@@ -56,6 +55,10 @@ page_evict (void)
     
     /* Re-enable page faults for this address. */
     pagedir_clear_page (pte->owner->pagedir, pte->addr);
+    
+    /* Uninstall the frame. */
+    frame_free (pte->fte);
+    pte->fte = NULL;
 
     /* Try to allocate another page for the caller again. Must succeed. */
     void *kpage = palloc_get_page (PAL_USER | PAL_ZERO);

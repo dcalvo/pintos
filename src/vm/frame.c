@@ -71,7 +71,7 @@ frame_release (struct frame_table_entry *fte)
     Distance between two hands is total # of frames / HAND_SPREAD pages.*/
 #define HAND_SPREAD (4)
 struct page_table_entry *
-frame_evict (void)
+frame_victim (void)
 {
     lock_acquire (&frame_table_lock);
 
@@ -111,7 +111,6 @@ frame_evict (void)
 
     lock_release (&frame_table_lock);
     struct page_table_entry *evicted_pte = victim->pte;
-    frame_free (victim); // goodbye friend
 
     return evicted_pte;
 }
