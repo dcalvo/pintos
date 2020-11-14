@@ -32,5 +32,4 @@ struct page_table_entry *frame_victim (void);
 void frame_acquire (struct frame_table_entry *fte);
 void frame_release (struct frame_table_entry *fte);
 
-
 #endif
