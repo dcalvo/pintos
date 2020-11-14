@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <string.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -16,6 +17,7 @@
 #include "threads/malloc.h"
 #include "vm/mapid_t.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 struct lock filesys;
 
@@ -161,6 +163,17 @@ sys_exit (int status)
   //   free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
   //     elem));
   // }
+
+  struct hash_iterator it;
+
+  hash_first (&it, &thread_current ()->page_table);
+  while (hash_next (&it))
+  {
+    struct page_table_entry *pte = hash_entry (hash_cur (&it),
+      struct page_table_entry, hash_elem);
+    page_evict (pte);
+  }
+  
   printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
 }
@@ -461,6 +474,20 @@ validate_addr (const void *addr)
     ++ptr;
   }
   return pagedir_get_page (thread_current()->pagedir, addr);
+}
+
+/* Converts a file name in upage space to a file name in kpage space. */
+static char *
+get_kfile_name (const char *ufile_name)
+{
+  struct page_table_entry *pte = page_load ((void *) ufile_name);
+  if (!pte)
+    sys_exit (-1); // bad file name pointer
+  
+  size_t size = strlen (ufile_name) < PGSIZE ? strlen (ufile_name) : PGSIZE;
+  frame_acquire (&pte->fte->lock);
+  strlcpy (pte->fte->kpage, ufile_name, size);
+  frame_release (&pte->fte->lock);
 }
 
 static void
