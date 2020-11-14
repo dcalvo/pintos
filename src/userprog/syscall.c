@@ -160,7 +160,7 @@ sys_exit (int status)
   while (!list_empty (&t->mappings))
   {
     free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
-      elem));
+                              elem));
   }
   printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
@@ -427,7 +427,8 @@ free_mapping (struct mapping *mapping)
 
   while (!list_empty (mapped_pages)) {
     struct page_table_entry *pte = list_entry (list_pop_front (mapped_pages),
-      struct page_table_entry, list_elem);
+                                               struct page_table_entry,
+                                               list_elem);
       page_evict (pte); // write to swap, remove from pd, uninstall the frame
       free (pte); // delete supplemental pte
   }
