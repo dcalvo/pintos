@@ -168,7 +168,7 @@ page_evict (struct page_table_entry *pte)
     page_write (pte);
 
   /* Re-enable page faults for this address. */
-  pagedir_clear_page (pte->thread->pagedir, pg_round_down(pte->upage));
+  pagedir_clear_page (pte->thread->pagedir, pte->upage);
 
   /* Uninstall the frame. */
   frame_free (pte->fte);
