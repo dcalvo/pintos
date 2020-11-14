@@ -8,37 +8,38 @@
 #include "devices/input.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
-#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
-#include "vm/page.h"
+
+#include "threads/malloc.h"
 #include "vm/mapid_t.h"
+#include "vm/page.h"
 
 struct lock filesys;
 
 struct fd
-{
-  int fd;
-  struct file *file;
-  struct list_elem elem;
-};
+  {
+    int fd;
+    struct file *file;
+    struct list_elem elem;
+  };
 
 struct mapping
-{
-  mapid_t id;
-  struct file *file;
-  struct list mapped_pages;
-  struct list_elem elem;
-};
+  {
+    mapid_t mapid;
+    struct file *file;
+    struct list mapped_pages;
+    struct list_elem elem;
+  };
 
 static void syscall_handler (struct intr_frame *);
-static void free_mapping (struct mapping *mapping);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
 static void validate_addr (const void *addr);
+static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
 static int sys_exec (const char *cmdline);
@@ -51,8 +52,8 @@ static int sys_write (int fd, const void *buffer, unsigned size);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close (int fd);
-static mapid_t mmap (int fd, void *addr);
-static void munmap (mapid_t mapping);
+static mapid_t sys_mmap (int fd, void *addr);
+static void sys_munmap (mapid_t mapid);
 
 void
 syscall_init (void) 
@@ -123,11 +124,11 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_MMAP:
       fetch_args (f, argv, 2);
-      f->eax = mmap (argv[0], (void *) argv[1]);
+      f->eax = sys_mmap (argv[0], (void *) argv[1]);
       break;
     case SYS_MUNMAP:
       fetch_args (f, argv, 1);
-      munmap (argv[0]);
+      sys_munmap (argv[0]);
       break;
     case SYS_CHDIR:
       break;
@@ -342,7 +343,7 @@ sys_close (int fd_to_close)
 
 /* Implementation of SYS_MMAP syscall. */
 static mapid_t
-mmap (int fd, void *addr)
+sys_mmap (int fd, void *addr)
 {
   if (fd == 0 || fd == 1) // 0 and 1 reserved for stdio
     return MAP_FAILED;
@@ -366,8 +367,8 @@ mmap (int fd, void *addr)
   /* Set up bookkeeping for mapped memory. */
   struct list *mappings = &thread_current ()->mappings;
   struct mapping *mapping = malloc (sizeof *mapping);
-  mapping->id = list_empty (mappings) ? 0 
-    : list_entry (list_back (mappings), struct mapping, elem)->id + 1;
+  mapping->mapid = list_empty (mappings) ? 0 
+    : list_entry (list_back (mappings), struct mapping, elem)->mapid + 1;
   mapping->file = file;
   list_init (&mapping->mapped_pages);
   list_push_back (&thread_current ()->mappings, &mapping->elem);
@@ -395,12 +396,12 @@ mmap (int fd, void *addr)
       upage += PGSIZE;
     }
 
-  return mapping->id;
+  return mapping->mapid;
 }
 
 /* Implementation of SYS_MUNMAP syscall. */
 static void
-munmap (mapid_t mapping_id)
+sys_munmap (mapid_t mapid)
 {
   struct list *mappings = &thread_current ()->mappings;
 
@@ -410,7 +411,7 @@ munmap (mapid_t mapping_id)
       it != list_end (mappings); it = list_next (it))
     {
       struct mapping *mapping = list_entry (it, struct mapping, elem);
-      if (mapping->id == mapping_id)
+      if (mapping->mapid == mapid)
       {
         free_mapping (mapping);
         break;
