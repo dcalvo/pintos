@@ -63,8 +63,8 @@ frame_free (struct frame_table_entry *fte)
   frame_acquire (fte);
   lock_acquire (&frame_table_lock);
 
-  hash_delete (&frame_table, &fte->elem);
-  palloc_free_page (fte->addr);
+  hash_delete (&frame_table, &fte->hash_elem);
+  palloc_free_page (fte->kpage);
   free (fte);
 
   lock_release (&frame_table_lock);
@@ -91,10 +91,11 @@ frame_victim (void)
   struct hash_iterator it;
 
   hash_first (&it, &frame_table);
-  second_fte = hash_entry (hash_next (&it), struct frame_table_entry, elem);
+  second_fte = hash_entry (hash_next (&it), struct frame_table_entry,
+                           hash_elem);
   for (int i = 0; i < frame_table_size / HAND_SPREAD; i++)
     hash_next (&it);
-  first_fte = hash_entry (hash_cur (&it), struct frame_table_entry, elem);
+  first_fte = hash_entry (hash_cur (&it), struct frame_table_entry, hash_elem);
   if (!first_fte || !second_fte)
     PANIC ("FRAME EVICTION FAILURE");
 
@@ -106,13 +107,14 @@ frame_victim (void)
   while (!victim) {
     if (first_fte->pte->accessed)
       first_fte->pte->accessed = false;
-      if (!second_fte->pte->accessed)
-        victim = second_fte;
-      if (!hash_next (&it))
-        hash_first (&it, &frame_table);
+    if (!second_fte->pte->accessed)
+      victim = second_fte;
+    if (!hash_next (&it))
+      hash_first (&it, &frame_table);
 
-      second_fte = first_fte;
-      first_fte = hash_entry (hash_cur (&it), struct frame_table_entry, elem);
+    second_fte = first_fte;
+    first_fte = hash_entry (hash_cur (&it), struct frame_table_entry,
+                            hash_elem);
   }
 
   lock_release (&frame_table_lock);

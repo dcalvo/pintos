@@ -173,12 +173,13 @@ page_evict (struct page_table_entry *pte)
     pte = frame_victim ();
 
   /* Write to swap if necessary. */
-  pte->dirty = pagedir_is_dirty (pte->owner->pagedir, pte->addr) ? true : false;
+  pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage)
+      ? true : false;
   if (pte->dirty)
     page_write (pte);
 
   /* Re-enable page faults for this address. */
-  pagedir_clear_page (pte->owner->pagedir, pte->addr);
+  pagedir_clear_page (pte->thread->pagedir, pte->upage);
 
   /* Uninstall the frame. */
   frame_free (pte->fte);
@@ -191,8 +192,7 @@ page_write (struct page_table_entry *pte)
 {
   frame_acquire (pte->fte);
   if (pte->mapped && pte->file) {
-    file_write_at (pte->file, pte->fte->addr, pte->file_bytes,
-                   pte->file_ofs);
+    file_write_at (pte->file, pte->fte->kpage, pte->file_bytes, pte->file_ofs);
     pte->mapped = false;
   } else
     swap_write (pte->fte);

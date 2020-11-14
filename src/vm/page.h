@@ -15,7 +15,7 @@ void page_evict (struct page_table_entry *pte);
 
 struct page_table_entry
 {
-  struct thread *thread;           /* Owner thread of the page. */
+  struct thread *thread;          /* Owner thread of the page. */
   void *upage;                    /* Virtual address. */
   bool writable;                  /* Writable bit. Set at allocation. */
   bool accessed;                  /* Accessed bit. Set when read/write. */
@@ -27,6 +27,7 @@ struct page_table_entry
   struct file *file;              /* File page pointer. */
   off_t file_ofs;                 /* File access offset. */
   size_t file_bytes;              /* File bytes to read. */
+  bool mapped;                    /* True if mapped. */
 
   struct frame_table_entry *fte;  /* Associated frame table entry. */
 
