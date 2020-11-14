@@ -153,7 +153,7 @@ sys_exit (int status)
 {
   struct thread *t = thread_current ();
   printf ("%s: exit(%d)\n", t->name, status);
-  
+
   struct shared_info *shared_info = t->shared_info;
   if (shared_info)
   {
@@ -173,7 +173,8 @@ sys_exit (int status)
   {
     struct page_table_entry *pte = hash_entry (hash_cur (&it),
       struct page_table_entry, hash_elem);
-    page_evict (pte);
+    if (pte->fte)
+      page_evict (pte);
   }
 
   thread_exit ();
