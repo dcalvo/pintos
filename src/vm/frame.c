@@ -131,7 +131,8 @@ frame_victim (void)
 void
 frame_acquire (struct frame_table_entry *fte)
 {
-  lock_acquire (&fte->lock);
+  if (!lock_held_by_current_thread (&fte->lock))
+    lock_acquire (&fte->lock);
 }
 
 /* Release frame lock. */
