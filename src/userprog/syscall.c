@@ -457,7 +457,7 @@ validate_addr (const void *addr)
   char *ptr = (char*)(addr); // increment through the address one byte at a time
   for (unsigned i = 0; i < sizeof (addr); i++)
   {
-    if (!is_user_vaddr (ptr))
+    if (!is_user_vaddr (ptr) || !pagedir_get_page (thread_current()->pagedir, ptr))
       sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
