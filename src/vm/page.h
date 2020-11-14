@@ -9,7 +9,6 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
                 void *aux);
 
 bool page_load (void *fault_addr);
-void page_free (void *vaddr);
 struct page_table_entry *page_alloc (void *vaddr, bool writable);
 void page_evict (struct page_table_entry *pte);
 

@@ -5,7 +5,6 @@
 #include <list.h>
 #include <stdint.h>
 #include <hash.h>
-#include "vm/mapid_t.h"
 
 /* States in a thread's life cycle. */
 enum thread_status

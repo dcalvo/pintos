@@ -1,5 +1,5 @@
-#include "vm/swap.h"
 #include "threads/vaddr.h"
+#include "vm/swap.h"
 
 static struct block *swap_block;
 static struct bitmap *swap_map; // false is swap space available

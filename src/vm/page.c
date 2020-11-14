@@ -74,16 +74,6 @@ page_load (void *fault_addr)
   return true;
 }
 
-/* Frees the page associated with the given address. */
-void
-page_free (void *vaddr)
-{
-  struct page_table_entry *pte = page_get (vaddr);
-  ASSERT (pte)
-
-  // TODO free page and frame
-}
-
 /* Given an address, get the page associated with it or return NULL.
 Allocates new pages as necessary. */
 static struct page_table_entry *
