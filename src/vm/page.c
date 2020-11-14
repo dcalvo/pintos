@@ -171,7 +171,8 @@ page_evict (struct page_table_entry *pte)
   pagedir_clear_page (pte->thread->pagedir, pte->upage);
 
   /* Uninstall the frame. */
-  frame_free (pte->fte);
+  if (pte->fte)
+    frame_free (pte->fte);
   pte->fte = NULL;
 }
 
