@@ -156,11 +156,11 @@ sys_exit (int status)
     shared_info->has_exited = true;
     shared_info->exit_code = status;
   }
-  while (!list_empty (&t->mappings))
-  {
-    free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
-      elem));
-  }
+  // while (!list_empty (&t->mappings))
+  // {
+  //   free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
+  //     elem));
+  // }
   printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
 }
