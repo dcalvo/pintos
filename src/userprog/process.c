@@ -470,7 +470,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         pte->file = file;
         pte->file_ofs = ofs;
         pte->file_bytes = page_read_bytes;
-        pte->writable = false;
       }
 
       /* Advance. */
