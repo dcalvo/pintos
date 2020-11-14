@@ -263,8 +263,11 @@ static int sys_filesize (int fd)
 /* Implementation of SYS_READ syscall. */
 static int sys_read (int fd, void *buffer, unsigned size)
 {
+  struct page_table_entry *pte = page_get (buffer, false);
+  if (!pte || !pte->writable)
+    sys_exit (-1); // buffer is in invalid or read-only memory
   buffer = validate_addr (buffer);
-
+  
   if (fd == 0) // read from stdinput
   {
     for (unsigned i = 0; i < size; i++)

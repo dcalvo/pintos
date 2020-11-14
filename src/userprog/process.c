@@ -48,6 +48,7 @@ process_execute (const char *cmdline)
   strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
+  /* Ensure file from file_name exists. */
   struct file *file = filesys_open (file_name);
   if (file == NULL)
     goto error_occured;
@@ -469,6 +470,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         pte->file = file;
         pte->file_ofs = ofs;
         pte->file_bytes = page_read_bytes;
+        pte->writable = false;
       }
 
       /* Advance. */
