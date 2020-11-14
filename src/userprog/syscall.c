@@ -168,6 +168,7 @@ sys_exit (int status)
 
   struct hash_iterator it;
 
+  // use hash_clear to destroy each frame
   hash_first (&it, &thread_current ()->page_table);
   while (hash_next (&it))
   {
@@ -502,6 +503,7 @@ free_mapping (struct mapping *mapping)
                                                struct page_table_entry,
                                                list_elem);
       page_evict (pte); // write to swap, remove from pd, uninstall the frame
+      hash_delete (&thread_current ()->page_table, &pte->hash_elem);
       free (pte); // delete supplemental pte
   }
 
