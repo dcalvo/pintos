@@ -38,7 +38,7 @@ struct mapping
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
-static void validate_addr (const void *addr);
+static void* validate_addr (const void *addr);
 static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
@@ -248,7 +248,7 @@ static int sys_filesize (int fd)
 /* Implementation of SYS_READ syscall. */
 static int sys_read (int fd, void *buffer, unsigned size)
 {
-  validate_addr (buffer);
+  buffer = validate_addr (buffer);
 
   if (fd == 0) // read from stdinput
   {
@@ -451,16 +451,17 @@ fetch_file (int fd_to_find)
 }
 
 /* Check if an address is valid using the methods described on the project page. */
-static void
+static void *
 validate_addr (const void *addr)
 {
-  char *ptr = (char*)(addr); // increment through the addres one byte at a time
+  char *ptr = (char*)(addr); // increment through the address one byte at a time
   for (unsigned i = 0; i < sizeof (addr); i++)
   {
-    if (!is_user_vaddr (ptr) || !pagedir_get_page (thread_current()->pagedir, ptr))
+    if (!is_user_vaddr (ptr))
       sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
+  return pagedir_get_page (thread_current()->pagedir, addr);
 }
 
 static void
