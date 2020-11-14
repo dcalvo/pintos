@@ -152,6 +152,8 @@ void
 sys_exit (int status)
 {
   struct thread *t = thread_current ();
+  printf ("%s: exit(%d)\n", t->name, status);
+  
   struct shared_info *shared_info = t->shared_info;
   if (shared_info)
   {
@@ -174,7 +176,6 @@ sys_exit (int status)
     page_evict (pte);
   }
 
-  printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
 }
 
