@@ -8,22 +8,34 @@
 #include "devices/input.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "vm/page.h"
+#include "vm/mapid_t.h"
 
 struct lock filesys;
 
 struct fd
-  {
-    int fd;
-    struct file *file;
-    struct list_elem elem;
-  };
+{
+  int fd;
+  struct file *file;
+  struct list_elem elem;
+};
+
+struct mapping
+{
+  mapid_t id;
+  struct file *file;
+  struct list mapped_pages;
+  struct list_elem elem;
+};
 
 static void syscall_handler (struct intr_frame *);
+static void free_mapping (struct mapping *mapping);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
 static void validate_addr (const void *addr);
@@ -39,6 +51,8 @@ static int sys_write (int fd, const void *buffer, unsigned size);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close (int fd);
+static mapid_t mmap (int fd, void *addr);
+static void munmap (mapid_t mapping);
 
 void
 syscall_init (void) 
@@ -108,8 +122,12 @@ syscall_handler (struct intr_frame *f)
       sys_close (argv[0]);
       break;
     case SYS_MMAP:
+      fetch_args (f, argv, 2);
+      f->eax = mmap (argv[0], (void *) argv[1]);
       break;
     case SYS_MUNMAP:
+      fetch_args (f, argv, 1);
+      munmap (argv[0]);
       break;
     case SYS_CHDIR:
       break;
@@ -137,6 +155,11 @@ sys_exit (int status)
   {
     shared_info->has_exited = true;
     shared_info->exit_code = status;
+  }
+  while (!list_empty (&t->mappings))
+  {
+    free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
+      elem));
   }
   printf ("%s: exit(%d)\n", t->name, status);
   thread_exit ();
@@ -315,6 +338,100 @@ sys_close (int fd_to_close)
     }
   }
   lock_release (&filesys);
+}
+
+/* Implementation of SYS_MMAP syscall. */
+static mapid_t
+mmap (int fd, void *addr)
+{
+  if (fd == 0 || fd == 1) // 0 and 1 reserved for stdio
+    return MAP_FAILED;
+  
+  uint8_t *upage = addr;
+  if (!upage || pg_ofs(upage) % PGSIZE != 0)
+    return MAP_FAILED;
+
+  /* Get file statistics. */
+  struct file *file = fetch_file (fd);
+  if (!file)
+    return MAP_FAILED;
+  else
+    file = file_reopen (file);
+  uint32_t read_bytes = file_length (file);
+  if (!(read_bytes > 0))
+    return MAP_FAILED;
+  bool writable = file_writable (file);
+  off_t ofs = 0;
+
+  /* Set up bookkeeping for mapped memory. */
+  struct list *mappings = &thread_current ()->mappings;
+  struct mapping *mapping = malloc (sizeof *mapping);
+  mapping->id = list_empty (mappings) ? 0 
+    : list_entry (list_back (mappings), struct mapping, elem)->id + 1;
+  mapping->file = file;
+  list_init (&mapping->mapped_pages);
+  list_push_back (&thread_current ()->mappings, &mapping->elem);
+
+  while (read_bytes > 0) 
+    {
+      /* Calculate how to fill this page.
+         We will read PAGE_READ_BYTES bytes from FILE. */
+      size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+
+      struct page_table_entry *pte = page_alloc (upage, writable);
+      if (!pte)
+        return MAP_FAILED;
+
+      /* Populate page table entry. */
+      pte->file = file;
+      pte->file_ofs = ofs;
+      pte->file_bytes = page_read_bytes;
+      pte->mapped = true;
+      list_push_back (&mapping->mapped_pages, &pte->list_elem);
+
+      /* Advance. */
+      read_bytes -= page_read_bytes;
+      ofs += page_read_bytes;
+      upage += PGSIZE;
+    }
+
+  return mapping->id;
+}
+
+/* Implementation of SYS_MUNMAP syscall. */
+static void
+munmap (mapid_t mapping_id)
+{
+  struct list *mappings = &thread_current ()->mappings;
+
+  if (!list_empty (mappings))
+  {
+    for (struct list_elem *it = list_front (mappings);
+      it != list_end (mappings); it = list_next (it))
+    {
+      struct mapping *mapping = list_entry (it, struct mapping, elem);
+      if (mapping->id == mapping_id)
+      {
+        free_mapping (mapping);
+        break;
+      }
+    }
+  }
+}
+
+static void
+free_mapping (struct mapping *mapping)
+{
+  struct list *mapped_pages = &mapping->mapped_pages;
+
+  while (!list_empty (mapped_pages)) {
+    struct page_table_entry *pte = list_entry (list_pop_front (mapped_pages),
+      struct page_table_entry, list_elem);
+      page_evict (pte); // write to swap, remove from pd, uninstall the frame
+      free (pte); // delete supplemental pte
+  }
+
+  free (mapping);
 }
 
 /* Safely fetch register values from F and store it into ARGV array. Reads up to NUM args. */

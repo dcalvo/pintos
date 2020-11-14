@@ -10,12 +10,12 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 bool page_load (void *fault_addr);
 void page_free (void *vaddr);
-struct page_table_entry *page_alloc (void *address, bool writable);
-
-void page_evict (void);
+struct page_table_entry *page_alloc (void *vaddr, bool writable);
+void page_evict (struct page_table_entry *pte);
 
 struct page_table_entry
 {
+  struct thread *thread;           /* Owner thread of the page. */
   void *upage;                    /* Virtual address. */
   bool writable;                  /* Writable bit. Set at allocation. */
   bool accessed;                  /* Accessed bit. Set when read/write. */
@@ -31,6 +31,7 @@ struct page_table_entry
   struct frame_table_entry *fte;  /* Associated frame table entry. */
 
   struct hash_elem hash_elem;     /* Hash element for page table. */
+  struct list_elem list_elem;     /* List element for memory mapping. */
 };
 
 #endif

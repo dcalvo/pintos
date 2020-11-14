@@ -8,6 +8,7 @@
 #include "vm/page.h"
 
 struct hash frame_table;
+struct lock frame_table_lock;
 
 struct frame_table_entry 
 {
@@ -24,8 +25,12 @@ unsigned frame_hash (const struct hash_elem *f_, void *aux);
 bool frame_less (const struct hash_elem *a_, const struct hash_elem *b_,
                  void *aux);
 
-struct frame_table_entry* frame_alloc (struct page_table_entry *pte);
-void frame_acquire (struct frame_table_entry *pte);
+struct frame_table_entry *frame_alloc (struct page_table_entry *pte);
+void frame_free (struct frame_table_entry *fte);
+struct page_table_entry *frame_victim (void);
+
+void frame_acquire (struct frame_table_entry *fte);
 void frame_release (struct frame_table_entry *fte);
+
 
 #endif

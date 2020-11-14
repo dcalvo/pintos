@@ -65,8 +65,10 @@ page_load (void *fault_addr)
     return false;
 
   /* Install the page into frame. */
-  if (!install_page (pte->upage, fte->kpage, pte->writable))
+  if (!install_page (pte->upage, fte->kpage, pte->writable)) {
+    frame_free (fte);
     return false;
+  }
 
   pte->accessed = true;
   return true;
@@ -125,6 +127,8 @@ page_alloc (void *vaddr, bool writable)
 static void
 page_init (struct page_table_entry *pte)
 {
+  pte->thread = thread_current ();
+
   pte->accessed = false;
   pte->dirty = false;
 
@@ -134,6 +138,8 @@ page_init (struct page_table_entry *pte)
   pte->file = NULL;
   pte->file_ofs = 0;
   pte->file_bytes = 0;
+
+  pte->mapped = MAP_FAILED;
 }
 
 /* Read stored data into pages. */
@@ -160,16 +166,22 @@ page_read (struct page_table_entry *pte)
 
 /* Evict a page and save it to swap. */
 void
-page_evict (void)
+page_evict (struct page_table_entry *pte)
 {
-  struct page_table_entry *pte;
-  // TODO eviction algo
+  /* Locate the frame victim. */
+  if (!pte)
+    pte = frame_victim ();
 
+  /* Write to swap if necessary. */
+  pte->dirty = pagedir_is_dirty (pte->owner->pagedir, pte->addr) ? true : false;
   if (pte->dirty)
     page_write (pte);
 
-  pagedir_clear_page (pte->fte->thread->pagedir, pte->upage);
-  free (pte->fte);
+  /* Re-enable page faults for this address. */
+  pagedir_clear_page (pte->owner->pagedir, pte->addr);
+
+  /* Uninstall the frame. */
+  frame_free (pte->fte);
   pte->fte = NULL;
 }
 
@@ -178,6 +190,11 @@ static void
 page_write (struct page_table_entry *pte)
 {
   frame_acquire (pte->fte);
-  swap_write (pte->fte);
+  if (pte->mapped && pte->file) {
+    file_write_at (pte->file, pte->fte->addr, pte->file_bytes,
+                   pte->file_ofs);
+    pte->mapped = false;
+  } else
+    swap_write (pte->fte);
   frame_release (pte->fte);
 }

@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include <hash.h>
+#include "vm/mapid_t.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -109,6 +110,8 @@ struct thread
 
     struct hash page_table;             /* Hash table for supplemental page table. */
     void *esp;                          /* esp register value at fault time. */
+    struct list mappings;               /* List of mappings. */
+
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

@@ -16,7 +16,7 @@ swap_init (void)
 void
 swap_read (struct frame_table_entry *fte)
 {
-  ASSERT (fte);
+  ASSERT (fte != NULL);
   ASSERT (lock_held_by_current_thread (&fte->lock));
   ASSERT (fte->pte->sector != -1);
 
@@ -34,7 +34,7 @@ swap_read (struct frame_table_entry *fte)
 void
 swap_write (struct frame_table_entry *fte)
 {
-  ASSERT (fte);
+  ASSERT (fte != NULL);
   ASSERT (lock_held_by_current_thread (&fte->lock));
 
   size_t page = bitmap_scan_and_flip (swap_map, 0, 1, false);
