@@ -8,7 +8,6 @@
 #include "devices/input.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
-#include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
@@ -209,7 +208,7 @@ sys_open (const char *file_name)
   lock_acquire (&filesys);
   struct file *file = filesys_open (file_name);
   struct list *fds = &thread_current ()->fds;
-  struct fd *fd = palloc_get_page (PAL_ZERO);
+  struct fd *fd = malloc (sizeof *fd);
   
   if (!file || !fd)
   {
@@ -333,7 +332,7 @@ sys_close (int fd_to_close)
       {
         file_close (fd->file);
         list_remove (&fd->elem);
-        palloc_free_page (fd);
+        free (fd);
         break; // closed requested file
       }
     }
