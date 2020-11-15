@@ -53,6 +53,7 @@ frame_alloc (struct page_table_entry *pte)
 
   if (hash_insert (&frame_table, &fte->hash_elem)) {
     free (fte);
+    pte->fte = NULL;
     palloc_free_page (kpage);
     lock_release (&frame_table_lock);
     return NULL;
