@@ -327,7 +327,7 @@ sys_write (int fd, const void *upage, unsigned write_bytes)
   while (write_bytes > 0)
   {
     struct page_table_entry *pte = page_load (upage);
-    if (!pte || !pte->writable)
+    if (!pte)
       sys_exit (-1); // buffer is in invalid or read-only memory
     void *kpage = validate_addr (upage);
 
