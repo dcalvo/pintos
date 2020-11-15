@@ -1,7 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
-#include <string.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -14,10 +13,11 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 
+#include <string.h>
 #include "threads/malloc.h"
+#include "vm/frame.h"
 #include "vm/mapid_t.h"
 #include "vm/page.h"
-#include "vm/frame.h"
 
 struct lock filesys;
 
@@ -160,15 +160,9 @@ sys_exit (int status)
     shared_info->has_exited = true;
     shared_info->exit_code = status;
   }
-  // while (!list_empty (&t->mappings))
-  // {
-  //   free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
-  //     elem));
-  // }
-
-  struct hash_iterator it;
 
   // use hash_clear to destroy each frame
+  struct hash_iterator it;
   hash_first (&it, &thread_current ()->page_table);
   while (hash_next (&it))
   {
