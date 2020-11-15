@@ -42,35 +42,35 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
-bool
+struct page_table_entry *
 page_load (void *fault_addr)
 {
   if (!fault_addr)
-    return false;
+    return NULL;
 
   /* Retrieve (or allocate) the page. */
   struct page_table_entry *pte = page_get (fault_addr, true);
   if (!pte)
-    return false;
+    return NULL;
 
   /* Allocate a frame. */
   struct frame_table_entry *fte = frame_alloc (pte);
   if (!fte)
-    return false;
+    return NULL;
 
   /* Load data into the page. */
   pte->fte = fte;
   if (!page_read (pte))
-    return false;
+    return NULL;
 
   /* Install the page into frame. */
   if (!install_page (pte->upage, fte->kpage, pte->writable)) {
     frame_free (fte);
-    return false;
+    return NULL;
   }
 
   pte->accessed = true;
-  return true;
+  return pte;
 }
 
 /* Given an address, get the page associated with it or return NULL.
