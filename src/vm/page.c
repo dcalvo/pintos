@@ -172,7 +172,8 @@ page_evict (struct page_table_entry *pte)
     pte = frame_victim ();
 
   /* Write to swap if necessary. */
-  pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage);
+  if (!pte->dirty)
+    pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage);
   if (pte->dirty)
     page_write (pte);
 
