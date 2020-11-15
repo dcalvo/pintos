@@ -13,7 +13,6 @@
 /* Max user stack size. 8MB. */
 #define USER_STACK (8 * 1024 * 1024)
 
-static struct page_table_entry *page_get (void *address);
 static void page_init (struct page_table_entry *pte);
 static bool page_read (struct page_table_entry *pte);
 static void page_write (struct page_table_entry *pte);
@@ -50,7 +49,7 @@ page_load (void *fault_addr)
     return false;
 
   /* Retrieve (or allocate) the page. */
-  struct page_table_entry *pte = page_get (fault_addr);
+  struct page_table_entry *pte = page_get (fault_addr, true);
   if (!pte)
     return false;
 
@@ -75,9 +74,9 @@ page_load (void *fault_addr)
 }
 
 /* Given an address, get the page associated with it or return NULL.
-Allocates new pages as necessary. */
-static struct page_table_entry *
-page_get (void *vaddr)
+Allocates new pages as necessary, if alloc is true. */
+struct page_table_entry *
+page_get (void *vaddr, bool alloc)
 {
   if (!is_user_vaddr (vaddr))
     return NULL;
@@ -90,7 +89,7 @@ page_get (void *vaddr)
     return hash_entry (elem, struct page_table_entry, hash_elem);
   /* Checking that the page address is inside max stack size
    and at most 32 bytes away. */
-  else if (PHYS_BASE - USER_STACK <= pte.upage && t->esp - 32 <= vaddr)
+  else if (alloc && PHYS_BASE - USER_STACK <= pte.upage && t->esp - 32 <= vaddr)
     return page_alloc (pte.upage, true);
   else
     return NULL;
@@ -171,7 +170,8 @@ page_evict (struct page_table_entry *pte)
   pagedir_clear_page (pte->thread->pagedir, pte->upage);
 
   /* Uninstall the frame. */
-  frame_free (pte->fte);
+  if (pte->fte)
+    frame_free (pte->fte);
   pte->fte = NULL;
 }
 

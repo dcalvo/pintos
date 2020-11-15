@@ -48,6 +48,7 @@ process_execute (const char *cmdline)
   strlcpy (file_name, cmdline, PGSIZE);
   file_name = strtok_r (file_name, " ", &args);
 
+  /* Ensure file from file_name exists. */
   struct file *file = filesys_open (file_name);
   if (file == NULL)
     goto error_occured;

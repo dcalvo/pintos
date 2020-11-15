@@ -49,11 +49,15 @@ frame_alloc (struct page_table_entry *pte)
   fte->thread = thread_current (); // store frame thread
   fte->pte = pte; // store frame pte
   lock_init (&fte->lock);
+  lock_acquire (&frame_table_lock);
+
   if (hash_insert (&frame_table, &fte->hash_elem)) {
     free (fte);
-    free (kpage);
+    palloc_free_page (kpage);
+    lock_release (&frame_table_lock);
     return NULL;
   }
+  lock_release (&frame_table_lock);
   return fte;
 }
 

@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <string.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -8,7 +9,6 @@
 #include "devices/input.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
-#include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
@@ -17,6 +17,7 @@
 #include "threads/malloc.h"
 #include "vm/mapid_t.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 struct lock filesys;
 
@@ -38,7 +39,7 @@ struct mapping
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
-static void validate_addr (const void *addr);
+static void* validate_addr (const void *addr);
 static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
@@ -151,18 +152,32 @@ void
 sys_exit (int status)
 {
   struct thread *t = thread_current ();
+  printf ("%s: exit(%d)\n", t->name, status);
+
   struct shared_info *shared_info = t->shared_info;
   if (shared_info)
   {
     shared_info->has_exited = true;
     shared_info->exit_code = status;
   }
-  while (!list_empty (&t->mappings))
+  // while (!list_empty (&t->mappings))
+  // {
+  //   free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
+  //     elem));
+  // }
+
+  struct hash_iterator it;
+
+  // use hash_clear to destroy each frame
+  hash_first (&it, &thread_current ()->page_table);
+  while (hash_next (&it))
   {
-    free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
-                              elem));
+    struct page_table_entry *pte = hash_entry (hash_cur (&it),
+      struct page_table_entry, hash_elem);
+    if (pte->fte)
+      page_evict (pte);
   }
-  printf ("%s: exit(%d)\n", t->name, status);
+
   thread_exit ();
 }
 
@@ -209,7 +224,7 @@ sys_open (const char *file_name)
   lock_acquire (&filesys);
   struct file *file = filesys_open (file_name);
   struct list *fds = &thread_current ()->fds;
-  struct fd *fd = palloc_get_page (PAL_ZERO);
+  struct fd *fd = malloc (sizeof *fd);
   
   if (!file || !fd)
   {
@@ -248,8 +263,11 @@ static int sys_filesize (int fd)
 /* Implementation of SYS_READ syscall. */
 static int sys_read (int fd, void *buffer, unsigned size)
 {
-  validate_addr (buffer);
-
+  struct page_table_entry *pte = page_get (buffer, false);
+  if (!pte || !pte->writable)
+    sys_exit (-1); // buffer is in invalid or read-only memory
+  buffer = validate_addr (buffer);
+  
   if (fd == 0) // read from stdinput
   {
     for (unsigned i = 0; i < size; i++)
@@ -333,7 +351,7 @@ sys_close (int fd_to_close)
       {
         file_close (fd->file);
         list_remove (&fd->elem);
-        palloc_free_page (fd);
+        free (fd);
         break; // closed requested file
       }
     }
@@ -451,17 +469,32 @@ fetch_file (int fd_to_find)
 }
 
 /* Check if an address is valid using the methods described on the project page. */
-static void
+static void *
 validate_addr (const void *addr)
 {
-  char *ptr = (char*)(addr); // increment through the addres one byte at a time
+  char *ptr = (char*)(addr); // increment through the address one byte at a time
   for (unsigned i = 0; i < sizeof (addr); i++)
   {
     if (!is_user_vaddr (ptr) || !pagedir_get_page (thread_current()->pagedir, ptr))
       sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
+  return pagedir_get_page (thread_current()->pagedir, addr);
 }
+
+// /* Converts a file name in upage space to a file name in kpage space. */
+// static char *
+// get_kfile_name (const char *ufile_name)
+// {
+//   struct page_table_entry *pte = page_load ((void *) ufile_name);
+//   if (!pte)
+//     sys_exit (-1); // bad file name pointer
+  
+//   size_t size = strlen (ufile_name) < PGSIZE ? strlen (ufile_name) : PGSIZE;
+//   frame_acquire (&pte->fte->lock);
+//   strlcpy (pte->fte->kpage, ufile_name, size);
+//   frame_release (&pte->fte->lock);
+// }
 
 static void
 free_mapping (struct mapping *mapping)
@@ -473,6 +506,7 @@ free_mapping (struct mapping *mapping)
                                                struct page_table_entry,
                                                list_elem);
       page_evict (pte); // write to swap, remove from pd, uninstall the frame
+      hash_delete (&thread_current ()->page_table, &pte->hash_elem);
       free (pte); // delete supplemental pte
   }
 
