@@ -58,8 +58,9 @@ page_load (void *fault_addr)
 
   /* Allocate a frame. */
   struct frame_table_entry *fte = frame_alloc (pte);
-  if (!fte)
+  if (!fte) {
     return NULL;
+  }
 
   /* Load data into the page. */
   pte->fte = fte;
