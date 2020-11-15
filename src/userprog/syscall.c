@@ -192,9 +192,9 @@ sys_create (const char *file_name, unsigned size)
 {
   validate_addr (file_name);
   bool success = false;
-  lock_acquire (&filesys);
+  filesys_acquire ();
   success = filesys_create (file_name, size);
-  lock_release (&filesys);
+  filesys_release ();
   return success;
 }
 
@@ -203,9 +203,9 @@ static bool
 sys_remove (const char *file_name)
 {
   validate_addr (file_name);
-  lock_acquire (&filesys);
+  filesys_acquire ();
   bool success = filesys_remove (file_name);
-  lock_release (&filesys);
+  filesys_release ();
   return success;
 }
 
@@ -215,14 +215,14 @@ sys_open (const char *file_name)
 {
   validate_addr (file_name);
 
-  lock_acquire (&filesys);
+  filesys_acquire ();
   struct file *file = filesys_open (file_name);
+  filesys_release ();
   struct list *fds = &thread_current ()->fds;
   struct fd *fd = malloc (sizeof *fd);
   
   if (!file || !fd)
   {
-    lock_release (&filesys);
     return -1;
   }
   
@@ -235,7 +235,6 @@ sys_open (const char *file_name)
 
   fd->file = file;
   list_push_back (fds, &fd->elem);
-  lock_release (&filesys);
   return fd->fd;
 }
 
