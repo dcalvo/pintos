@@ -63,6 +63,7 @@ page_load (const void *fault_addr)
   /* Load data into the page. */
   pte->fte = fte;
   if (!page_read (pte)) {
+    frame_free (fte);
     pte->fte = NULL;
     return NULL;
   }
