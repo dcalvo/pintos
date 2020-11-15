@@ -138,6 +138,7 @@ page_init (struct page_table_entry *pte)
   pte->file_bytes = 0;
 
   pte->mapped = false;
+  pte->fte = NULL;
 }
 
 /* Read stored data into pages. */
