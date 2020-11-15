@@ -43,7 +43,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
 struct page_table_entry *
-page_load (void *fault_addr)
+page_load (const void *fault_addr)
 {
   if (!fault_addr)
     return NULL;
