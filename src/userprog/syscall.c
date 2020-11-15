@@ -352,7 +352,7 @@ sys_write (int fd, const void *upage, unsigned write_bytes)
       return -1;
 
     write_bytes -= page_write_bytes;
-    upage += page_read_bytes;
+    upage += page_write_bytes;
   }
 
   if (size - write_bytes != size)
