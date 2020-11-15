@@ -39,7 +39,7 @@ struct mapping
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
-static void *validate_addr (const void *addr);
+static void validate_addr (const void *addr);
 static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
@@ -257,10 +257,13 @@ static int sys_filesize (int fd)
 /* Implementation of SYS_READ syscall. */
 static int sys_read (int fd, void *buffer, unsigned size)
 {
-  struct page_table_entry *pte = page_get (buffer, false);
-  if (!pte || !pte->writable)
-    sys_exit (-1); // buffer is in invalid or read-only memory
-  validate_addr (buffer);
+  for (char *upage = pg_round_down (buffer); upage < (char *)buffer + size;
+       upage += PGSIZE) {
+    struct page_table_entry *pte = page_load (upage);
+    if (!pte || !pte->writable)
+      sys_exit (-1); // buffer is in invalid or read-only memory
+    validate_addr (upage);
+  }
   
   if (fd == 0) // read from stdinput
   {
@@ -463,7 +466,7 @@ fetch_file (int fd_to_find)
 }
 
 /* Check if an address is valid using the methods described on the project page. */
-static void *
+static void
 validate_addr (const void *addr)
 {
   char *ptr = (char*)(addr); // increment through the address one byte at a time
@@ -473,7 +476,6 @@ validate_addr (const void *addr)
       sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
-  return pagedir_get_page (thread_current()->pagedir, addr);
 }
 
 // /* Converts a file name in upage space to a file name in kpage space. */

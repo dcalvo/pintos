@@ -8,7 +8,7 @@ unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_,
                 void *aux);
 
-bool page_load (void *fault_addr);
+struct page_table_entry * page_load (void *fault_addr);
 struct page_table_entry *page_get (void *vaddr, bool alloc);
 struct page_table_entry *page_alloc (void *vaddr, bool writable);
 void page_evict (struct page_table_entry *pte);
