@@ -303,7 +303,7 @@ static int sys_read (int fd, void *upage, unsigned read_bytes)
       return -1;
 
     read_bytes -= page_read_bytes;
-    upage += PGSIZE;
+    upage += page_read_bytes;
   }
 
   if (size - read_bytes != size)
@@ -352,7 +352,7 @@ sys_write (int fd, const void *upage, unsigned write_bytes)
       return -1;
 
     write_bytes -= page_write_bytes;
-    upage += PGSIZE;
+    upage += page_read_bytes;
   }
 
   if (size - write_bytes != size)
