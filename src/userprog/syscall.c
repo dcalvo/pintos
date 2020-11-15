@@ -299,7 +299,7 @@ static int sys_read (int fd, void *buffer, unsigned size)
     lock_release (&filesys);
     frame_release (pte->fte);
 
-    (uint8_t *) buffer += page_read_bytes;
+    buffer += page_read_bytes;
     read_bytes -= page_read_bytes;
     if (read_bytes > 0)
       pte = page_load (buffer);
