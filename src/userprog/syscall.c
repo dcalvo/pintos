@@ -298,6 +298,7 @@ static int sys_read (int fd, void *upage, unsigned read_bytes)
     lock_release (&filesys);
     frame_release (pte->fte);
 
+    /* To verify we read the correct amount, not for bytes remaining. */
     if (read < 0)
       return -1;
 
@@ -312,26 +313,51 @@ static int sys_read (int fd, void *upage, unsigned read_bytes)
 
 /* Implementation of SYS_WRITE syscall. */
 static int
-sys_write (int fd, const void *buffer, unsigned size)
+sys_write (int fd, const void *upage, unsigned write_bytes)
 {
-  validate_addr (buffer);
-
-  if (fd == 1) {
-    putbuf (buffer, size);
-    return size;
+  struct file *file;
+  if (fd != 1){
+    file = fetch_file (fd);
+    if (!file)
+      return -1;
   }
 
-  // writing to file
-  lock_acquire (&filesys);
-  struct file *file = fetch_file (fd);
-  if (!file)
+  int size = write_bytes;
+  /* Loading segments of pages like load_segment in process.c */
+  while (write_bytes > 0)
   {
+    struct page_table_entry *pte = page_load (upage);
+    if (!pte || !pte->writable)
+      sys_exit (-1); // buffer is in invalid or read-only memory
+    void *kpage = validate_addr (upage);
+
+    size_t page_bytes_left = PGSIZE - pg_ofs (kpage);
+    size_t page_write_bytes = write_bytes < page_bytes_left ? write_bytes : page_bytes_left;
+
+    int write = -1;
+    frame_acquire (pte->fte);
+    lock_acquire (&filesys);
+    if (fd == 1) // write to stdout
+    {
+      putbuf (kpage, page_write_bytes);
+      write += page_write_bytes;
+    }
+    else
+      write += file_write (file, kpage, page_write_bytes);
     lock_release (&filesys);
-    return -1;
+    frame_release (pte->fte);
+
+    /* To verify we wrote the correct amount, not for bytes remaining. */
+    if (write < 0)
+      return -1;
+
+    write_bytes -= page_write_bytes;
+    upage += PGSIZE;
   }
-  int wrote = file_write (file, buffer, size);
-  lock_release (&filesys);
-  return wrote;
+
+  if (size - write_bytes != size)
+    return -1;
+  return size;
 }
 
 /* Implementation of SYS_SEEK syscall. */
