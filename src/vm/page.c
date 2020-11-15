@@ -108,7 +108,6 @@ page_alloc (void *vaddr, bool writable)
   page_init (pte);
   pte->upage = pg_round_down (vaddr);
   pte->writable = writable;
-  pte->fte = NULL;
   if (hash_insert (&thread_current ()->page_table, &pte->hash_elem)) {
     free (pte);
     return NULL;
@@ -133,6 +132,8 @@ page_init (struct page_table_entry *pte)
   pte->file_bytes = 0;
 
   pte->mapped = false;
+
+  pte->fte = NULL;
 }
 
 /* Read stored data into pages. */
