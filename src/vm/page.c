@@ -84,7 +84,7 @@ page_load (const void *fault_addr)
 /* Given an address, get the page associated with it or return NULL.
 Allocates new pages as necessary, if alloc is true. */
 struct page_table_entry *
-page_get (void *vaddr, bool alloc)
+page_get (const void *vaddr, bool alloc)
 {
   if (!is_user_vaddr (vaddr))
     return NULL;
@@ -105,7 +105,7 @@ page_get (void *vaddr, bool alloc)
 
 /* Given an address, allocate an entry in the page table (without loading) */
 struct page_table_entry *
-page_alloc (void *vaddr, bool writable)
+page_alloc (const void *vaddr, bool writable)
 {
   struct page_table_entry *pte = malloc (sizeof *pte);
   if (!pte)
