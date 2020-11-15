@@ -264,7 +264,7 @@ static int sys_filesize (int fd)
 static int sys_read (int fd, void *upage, unsigned read_bytes)
 {
   struct file *file;
-  if (fd > 0){
+  if (fd != 0){
     file = fetch_file (fd);
     if (!file)
       return -1;
