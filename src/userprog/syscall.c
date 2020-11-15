@@ -261,47 +261,48 @@ static int sys_filesize (int fd)
 }
 
 /* Implementation of SYS_READ syscall. */
-static int sys_read (int fd, void *buffer, unsigned size)
+static int sys_read (int fd, void *upage, unsigned read_bytes)
 {
-  struct page_table_entry *pte = page_load (buffer);
-  if (!pte || !pte->writable)
-    sys_exit (-1); // buffer is in invalid or read-only memory
-  buffer = validate_addr (buffer);
-  
-  if (fd == 0) // read from stdinput
-  {
-    for (unsigned i = 0; i < size; i++)
-    {
-      ((uint8_t *) buffer)[i] = input_getc();
-    }
-    return size;
+  struct file *file;
+  if (fd > 0){
+    file = fetch_file (fd);
+    if (!file)
+      return -1;
   }
-  
-  // reading from file
-  struct file *file = fetch_file (fd);
-  if (!file)
-    return -1;
 
+  int size = read_bytes;
   /* Loading segments of pages like load_segment in process.c */
-  unsigned read_bytes = size;
   while (read_bytes > 0)
   {
-    size_t page_bytes_left = PGSIZE - pg_ofs (buffer);
+    struct page_table_entry *pte = page_load (upage);
+    if (!pte || !pte->writable)
+      sys_exit (-1); // buffer is in invalid or read-only memory
+    void *kpage = validate_addr (upage);
+
+    size_t page_bytes_left = PGSIZE - pg_ofs (kpage);
     size_t page_read_bytes = read_bytes < page_bytes_left ? read_bytes : page_bytes_left;
 
     int read = -1;
     frame_acquire (pte->fte);
     lock_acquire (&filesys);
-    read += file_read (file, buffer, page_read_bytes);
+    if (fd == 0) // read from stdinput
+    {
+      for (unsigned i = 0; i < page_read_bytes; i++)
+      {
+        ((uint8_t *) kpage)[i] = input_getc();
+        read++;
+      }
+    }
+    else
+      read += file_read (file, kpage, page_read_bytes);
     lock_release (&filesys);
     frame_release (pte->fte);
+
     if (read < 0)
       return -1;
 
-    buffer += page_read_bytes;
     read_bytes -= page_read_bytes;
-    if (read_bytes > 0)
-      pte = page_load (buffer);
+    upage += PGSIZE;
   }
 
   if (size - read_bytes != size)
