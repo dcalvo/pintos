@@ -34,6 +34,8 @@ swap_read (struct frame_table_entry *fte)
 void
 swap_write (struct frame_table_entry *fte)
 {
+  if (fte == NULL)
+    printf("debug");
   ASSERT (fte != NULL);
   ASSERT (lock_held_by_current_thread (&fte->lock));
 
