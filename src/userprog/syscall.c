@@ -319,7 +319,7 @@ sys_write (int fd, const void *upage, unsigned write_bytes)
   if (fd != 1){
     file = fetch_file (fd);
     if (!file)
-      return -1;
+      return 0;
   }
 
   int size = write_bytes;
@@ -349,14 +349,14 @@ sys_write (int fd, const void *upage, unsigned write_bytes)
 
     /* To verify we wrote the correct amount, not for bytes remaining. */
     if (write < 0)
-      return -1;
+      return 0;
 
     write_bytes -= page_write_bytes;
     upage += page_write_bytes;
   }
 
   if (size - write_bytes != size)
-    return -1;
+    return 0;
   return size;
 }
 
