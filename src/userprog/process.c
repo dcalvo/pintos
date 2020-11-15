@@ -49,7 +49,9 @@ process_execute (const char *cmdline)
   file_name = strtok_r (file_name, " ", &args);
 
   /* Ensure file from file_name exists. */
+  filesys_acquire ();
   struct file *file = filesys_open (file_name);
+  filesys_release ();
   if (file == NULL)
     goto error_occured;
   file_close (file);
@@ -286,7 +288,9 @@ load (char *cmdline, void (**eip) (void), void **esp)
   file_name = strtok_r (file_name, " ", &args);
 
   /* Open executable file. */
+  filesys_acquire ();
   file = filesys_open (file_name);
+  filesys_release ();
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
