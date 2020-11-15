@@ -278,13 +278,9 @@ static int sys_read (int fd, void *buffer, unsigned size)
   }
   
   // reading from file
-  lock_acquire (&filesys);
   struct file *file = fetch_file (fd);
   if (!file)
-  {
-    lock_release (&filesys);
     return -1;
-  }
 
   /* Loading segments of pages like load_segment in process.c */
   unsigned read_bytes = size;
@@ -293,20 +289,24 @@ static int sys_read (int fd, void *buffer, unsigned size)
     size_t page_bytes_left = PGSIZE - pg_ofs (buffer);
     size_t page_read_bytes = read_bytes < page_bytes_left ? read_bytes : page_bytes_left;
 
+    int read = -1;
     frame_acquire (pte->fte);
     lock_acquire (&filesys);
-    file_read (file, buffer, page_read_bytes);
+    read += file_read (file, buffer, page_read_bytes);
     lock_release (&filesys);
     frame_release (pte->fte);
+    if (read < 0)
+      return -1;
 
     buffer += page_read_bytes;
     read_bytes -= page_read_bytes;
     if (read_bytes > 0)
       pte = page_load (buffer);
   }
-  int read = file_read (file, buffer, size);
-  lock_release (&filesys);
-  return read;
+
+  if (size - read_bytes != size)
+    return -1;
+  return size;
 }
 
 /* Implementation of SYS_WRITE syscall. */
