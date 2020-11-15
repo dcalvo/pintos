@@ -74,9 +74,9 @@ page_load (void *fault_addr)
 }
 
 /* Given an address, get the page associated with it or return NULL.
-Allocates new pages as necessary, if alloc is true. */
+Allocates new pages as necessary, if stack is true. */
 struct page_table_entry *
-page_get (void *vaddr, bool alloc)
+page_get (void *vaddr, bool stack)
 {
   if (!is_user_vaddr (vaddr))
     return NULL;
@@ -89,7 +89,7 @@ page_get (void *vaddr, bool alloc)
     return hash_entry (elem, struct page_table_entry, hash_elem);
   /* Checking that the page address is inside max stack size
    and at most 32 bytes away. */
-  else if (alloc && PHYS_BASE - USER_STACK <= pte.upage && t->esp - 32 <= vaddr)
+  else if (stack && PHYS_BASE - USER_STACK <= pte.upage && t->esp - 32 <= vaddr)
     return page_alloc (pte.upage, true);
   else
     return NULL;

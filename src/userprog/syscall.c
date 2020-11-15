@@ -39,7 +39,7 @@ struct mapping
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
-static void* validate_addr (const void *addr);
+static void *validate_addr (const void *addr);
 static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
@@ -160,15 +160,9 @@ sys_exit (int status)
     shared_info->has_exited = true;
     shared_info->exit_code = status;
   }
-  // while (!list_empty (&t->mappings))
-  // {
-  //   free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
-  //     elem));
-  // }
-
-  struct hash_iterator it;
 
   // use hash_clear to destroy each frame
+  struct hash_iterator it;
   hash_first (&it, &thread_current ()->page_table);
   while (hash_next (&it))
   {
