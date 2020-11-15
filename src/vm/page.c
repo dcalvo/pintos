@@ -52,6 +52,8 @@ page_load (void *fault_addr)
   struct page_table_entry *pte = page_get (fault_addr, true);
   if (!pte)
     return NULL;
+  if (pte->fte)
+    return pte; // page is already installed
 
   /* Allocate a frame. */
   struct frame_table_entry *fte = frame_alloc (pte);
@@ -60,14 +62,17 @@ page_load (void *fault_addr)
 
   /* Load data into the page. */
   pte->fte = fte;
-  if (!page_read (pte))
+  if (!page_read (pte)) {
+    pte->fte = NULL;
     return NULL;
+  }
 
   /* Install the page into frame. */
   frame_acquire (fte);
   if (!install_page (pte->upage, fte->kpage, pte->writable)) {
     frame_release (fte);
     frame_free (fte);
+    pte->fte = NULL;
     return NULL;
   }
   frame_release (fte);
