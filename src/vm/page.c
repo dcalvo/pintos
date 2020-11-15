@@ -43,7 +43,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 /* Given an address, load the page into memory and return success,
 otherwise return a load failure and kill thread. */
 struct page_table_entry *
-page_load (void *fault_addr)
+page_load (const void *fault_addr)
 {
   if (!fault_addr)
     return NULL;
@@ -52,9 +52,8 @@ page_load (void *fault_addr)
   struct page_table_entry *pte = page_get (fault_addr, true);
   if (!pte)
     return NULL;
-
   if (pte->fte)
-    return pte;
+    return pte; // page is already installed
 
   /* Allocate a frame. */
   struct frame_table_entry *fte = frame_alloc (pte);
@@ -64,23 +63,30 @@ page_load (void *fault_addr)
 
   /* Load data into the page. */
   pte->fte = fte;
-  if (!page_read (pte))
-    return NULL;
-
-  /* Install the page into frame. */
-  if (!install_page (pte->upage, fte->kpage, pte->writable)) {
+  if (!page_read (pte)) {
     frame_free (fte);
+    pte->fte = NULL;
     return NULL;
   }
+
+  /* Install the page into frame. */
+  frame_acquire (fte);
+  if (!install_page (pte->upage, fte->kpage, pte->writable)) {
+    frame_release (fte);
+    frame_free (fte);
+    pte->fte = NULL;
+    return NULL;
+  }
+  frame_release (fte);
 
   pte->accessed = true;
   return pte;
 }
 
 /* Given an address, get the page associated with it or return NULL.
-Allocates new pages as necessary, if stack is true. */
+Allocates new pages as necessary, if alloc is true. */
 struct page_table_entry *
-page_get (void *vaddr, bool stack)
+page_get (const void *vaddr, bool alloc)
 {
   if (!is_user_vaddr (vaddr))
     return NULL;
@@ -93,7 +99,7 @@ page_get (void *vaddr, bool stack)
     return hash_entry (elem, struct page_table_entry, hash_elem);
   /* Checking that the page address is inside max stack size
    and at most 32 bytes away. */
-  else if (stack && PHYS_BASE - USER_STACK <= pte.upage && t->esp - 32 <= vaddr)
+  else if (alloc && PHYS_BASE - USER_STACK <= pte.upage && t->esp - 32 <= vaddr)
     return page_alloc (pte.upage, true);
   else
     return NULL;
@@ -101,7 +107,7 @@ page_get (void *vaddr, bool stack)
 
 /* Given an address, allocate an entry in the page table (without loading) */
 struct page_table_entry *
-page_alloc (void *vaddr, bool writable)
+page_alloc (const void *vaddr, bool writable)
 {
   struct page_table_entry *pte = malloc (sizeof *pte);
   if (!pte)
@@ -133,7 +139,6 @@ page_init (struct page_table_entry *pte)
   pte->file_bytes = 0;
 
   pte->mapped = false;
-
   pte->fte = NULL;
 }
 
@@ -168,7 +173,8 @@ page_evict (struct page_table_entry *pte)
     pte = frame_victim ();
 
   /* Write to swap if necessary. */
-  pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage);
+  if (!pte->dirty)
+    pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage);
   if (pte->dirty)
     page_write (pte);
 

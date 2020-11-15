@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <string.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -13,11 +14,10 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 
-#include <string.h>
 #include "threads/malloc.h"
-#include "vm/frame.h"
 #include "vm/mapid_t.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 struct lock filesys;
 
@@ -39,7 +39,7 @@ struct mapping
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
-static void validate_addr (const void *addr);
+static void* validate_addr (const void *addr);
 static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
@@ -160,9 +160,15 @@ sys_exit (int status)
     shared_info->has_exited = true;
     shared_info->exit_code = status;
   }
+  // while (!list_empty (&t->mappings))
+  // {
+  //   free_mapping (list_entry (list_pop_front (&t->mappings), struct mapping,
+  //     elem));
+  // }
+
+  struct hash_iterator it;
 
   // use hash_clear to destroy each frame
-  struct hash_iterator it;
   hash_first (&it, &thread_current ()->page_table);
   while (hash_next (&it))
   {
@@ -255,60 +261,103 @@ static int sys_filesize (int fd)
 }
 
 /* Implementation of SYS_READ syscall. */
-static int sys_read (int fd, void *buffer, unsigned size)
+static int sys_read (int fd, void *upage, unsigned read_bytes)
 {
-  for (char *upage = pg_round_down (buffer); upage < (char *)buffer + size;
-       upage += PGSIZE) {
+  struct file *file;
+  if (fd != 0){
+    file = fetch_file (fd);
+    if (!file)
+      return -1;
+  }
+
+  int size = read_bytes;
+  /* Loading segments of pages like load_segment in process.c */
+  while (read_bytes > 0)
+  {
     struct page_table_entry *pte = page_load (upage);
     if (!pte || !pte->writable)
       sys_exit (-1); // buffer is in invalid or read-only memory
-    validate_addr (upage);
-  }
-  
-  if (fd == 0) // read from stdinput
-  {
-    for (unsigned i = 0; i < size; i++)
+    void *kpage = validate_addr (upage);
+
+    size_t page_bytes_left = PGSIZE - pg_ofs (kpage);
+    size_t page_read_bytes = read_bytes < page_bytes_left ? read_bytes : page_bytes_left;
+
+    int read = -1;
+    frame_acquire (pte->fte);
+    lock_acquire (&filesys);
+    if (fd == 0) // read from stdinput
     {
-      ((uint8_t *) buffer)[i] = input_getc();
+      for (unsigned i = 0; i < page_read_bytes; i++)
+      {
+        ((uint8_t *) kpage)[i] = input_getc();
+        read++;
+      }
     }
-    return size;
-  }
-  
-  // reading from file
-  lock_acquire (&filesys);
-  struct file *file = fetch_file (fd);
-  if (!file)
-  {
+    else
+      read += file_read (file, kpage, page_read_bytes);
     lock_release (&filesys);
-    return -1;
+    frame_release (pte->fte);
+
+    /* To verify we read the correct amount, not for bytes remaining. */
+    if (read < 0)
+      return -1;
+
+    read_bytes -= page_read_bytes;
+    upage += page_read_bytes;
   }
-  int read = file_read (file, buffer, size);
-  lock_release (&filesys);
-  return read;
+
+  if (size - read_bytes != size)
+    return -1;
+  return size;
 }
 
 /* Implementation of SYS_WRITE syscall. */
 static int
-sys_write (int fd, const void *buffer, unsigned size)
+sys_write (int fd, const void *upage, unsigned write_bytes)
 {
-  validate_addr (buffer);
-
-  if (fd == 1) {
-    putbuf (buffer, size);
-    return size;
+  struct file *file;
+  if (fd != 1){
+    file = fetch_file (fd);
+    if (!file)
+      return 0;
   }
 
-  // writing to file
-  lock_acquire (&filesys);
-  struct file *file = fetch_file (fd);
-  if (!file)
+  int size = write_bytes;
+  /* Loading segments of pages like load_segment in process.c */
+  while (write_bytes > 0)
   {
+    struct page_table_entry *pte = page_load (upage);
+    if (!pte)
+      sys_exit (-1); // buffer is in invalid or read-only memory
+    void *kpage = validate_addr (upage);
+
+    size_t page_bytes_left = PGSIZE - pg_ofs (kpage);
+    size_t page_write_bytes = write_bytes < page_bytes_left ? write_bytes : page_bytes_left;
+
+    int write = -1;
+    frame_acquire (pte->fte);
+    lock_acquire (&filesys);
+    if (fd == 1) // write to stdout
+    {
+      putbuf (kpage, page_write_bytes);
+      write += page_write_bytes;
+    }
+    else
+      write += file_write (file, kpage, page_write_bytes);
     lock_release (&filesys);
-    return -1;
+    frame_release (pte->fte);
+
+    /* To verify we wrote the correct amount, not for bytes remaining. */
+    if (write < 0)
+      return 0;
+
+    write_bytes -= page_write_bytes;
+    upage += page_write_bytes;
   }
-  int wrote = file_write (file, buffer, size);
-  lock_release (&filesys);
-  return wrote;
+
+  if (size - write_bytes != size)
+    return 0;
+  return size;
 }
 
 /* Implementation of SYS_SEEK syscall. */
@@ -466,7 +515,7 @@ fetch_file (int fd_to_find)
 }
 
 /* Check if an address is valid using the methods described on the project page. */
-static void
+static void *
 validate_addr (const void *addr)
 {
   char *ptr = (char*)(addr); // increment through the address one byte at a time
@@ -476,6 +525,7 @@ validate_addr (const void *addr)
       sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
+  return pagedir_get_page (thread_current()->pagedir, addr);
 }
 
 // /* Converts a file name in upage space to a file name in kpage space. */
