@@ -64,10 +64,13 @@ page_load (void *fault_addr)
     return NULL;
 
   /* Install the page into frame. */
+  frame_acquire (fte);
   if (!install_page (pte->upage, fte->kpage, pte->writable)) {
+    frame_release (fte);
     frame_free (fte);
     return NULL;
   }
+  frame_release (fte);
 
   pte->accessed = true;
   return pte;
