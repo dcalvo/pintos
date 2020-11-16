@@ -166,7 +166,7 @@ sys_exit (int status)
     struct page_table_entry *pte = hash_entry (hash_cur (&it),
       struct page_table_entry, hash_elem);
     if (pte->fte == NULL)
-      return;
+      printf("null fte");
     if (pte->fte)
       page_evict (pte);
   }
