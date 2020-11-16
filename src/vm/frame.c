@@ -49,8 +49,8 @@ frame_alloc (struct page_table_entry *pte)
   fte->thread = thread_current (); // store frame thread
   fte->pte = pte; // store frame pte
   lock_init (&fte->lock);
-  lock_acquire (&frame_table_lock);
 
+  lock_acquire (&frame_table_lock);
   if (hash_insert (&frame_table, &fte->hash_elem)) {
     free (fte);
     pte->fte = NULL;
@@ -91,41 +91,39 @@ frame_victim (void)
   if (frame_table_size == -1)
     frame_table_size = hash_size (&frame_table);
 
-  struct frame_table_entry *first_fte = NULL;
-  struct frame_table_entry *second_fte = NULL;
   struct hash_iterator it;
-
   hash_first (&it, &frame_table);
-  second_fte = hash_entry (hash_next (&it), struct frame_table_entry,
-                           hash_elem);
+  struct frame_table_entry *fte_2 = hash_entry (hash_next (&it),
+                                                struct frame_table_entry,
+                                                hash_elem);
   for (int i = 0; i < frame_table_size / HAND_SPREAD; i++)
     hash_next (&it);
-  first_fte = hash_entry (hash_cur (&it), struct frame_table_entry, hash_elem);
-  if (!first_fte || !second_fte)
+  struct frame_table_entry *fte_1 = hash_entry (hash_cur (&it),
+                                                struct frame_table_entry,
+                                                hash_elem);
+  if (!fte_1 || !fte_2)
     PANIC ("FRAME EVICTION FAILURE");
 
   /* FRAME_TABLE_SIZE should be equal to total # of frames. */
-  /* FIRST_FTE should be (FRAME_TABLE_SIZE / HAND_SPREAD) pages in front of 
-      SECOND_FTE. */
+  /* FTE_1 should be (FRAME_TABLE_SIZE / HAND_SPREAD) pages in front of 
+      FTE_2. */
 
-  struct frame_table_entry *victim = NULL;
-  while (!victim) {
-    if (first_fte->pte->accessed)
-      first_fte->pte->accessed = false;
-    if (!second_fte->pte->accessed)
-      victim = second_fte;
+  struct frame_table_entry *fte_victim = NULL;
+  while (!fte_victim) {
+    if (fte_1->pte->accessed)
+      fte_1->pte->accessed = false;
+    if (!fte_2->pte->accessed)
+      fte_victim = fte_2;
     if (!hash_next (&it))
       hash_first (&it, &frame_table);
 
-    second_fte = first_fte;
-    first_fte = hash_entry (hash_cur (&it), struct frame_table_entry,
-                            hash_elem);
+    fte_2 = fte_1;
+    fte_1 = hash_entry (hash_cur (&it), struct frame_table_entry, hash_elem);
   }
 
   lock_release (&frame_table_lock);
-  struct page_table_entry *evicted_pte = victim->pte;
 
-  return evicted_pte;
+  return fte_victim->pte;
 }
 
 /* Acquire frame lock. */
