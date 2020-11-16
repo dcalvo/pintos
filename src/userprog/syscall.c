@@ -19,8 +19,6 @@
 #include "vm/mapid_t.h"
 #include "vm/page.h"
 
-struct lock filesys;
-
 struct fd
   {
     int fd;
@@ -39,7 +37,7 @@ struct mapping
 static void syscall_handler (struct intr_frame *);
 static void fetch_args (struct intr_frame *f, int *argv, int num);
 struct file* fetch_file (int fd_to_find);
-static void* validate_addr (const void *addr);
+static void validate_addr (const void *addr);
 static void free_mapping (struct mapping *mapping);
 
 /* Syscall implementations. */
@@ -59,7 +57,6 @@ static void sys_munmap (mapid_t mapid);
 void
 syscall_init (void) 
 {
-  lock_init (&filesys);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -180,9 +177,7 @@ static int
 sys_exec (const char *cmdline)
 {
   validate_addr (cmdline);
-  lock_acquire (&filesys);
   int pid = process_execute (cmdline);
-  lock_release (&filesys);
   return pid;
 }
 
@@ -241,114 +236,97 @@ sys_open (const char *file_name)
 /* Implementation of SYS_FILESIZE syscall. */
 static int sys_filesize (int fd)
 {
-  lock_acquire (&filesys);
   struct file *file = fetch_file (fd);
   if (!file)
   {
-    lock_release (&filesys);
     return -1;
   }
   int size = file_length (file);
-  lock_release (&filesys);
   return size;
 }
 
 /* Implementation of SYS_READ syscall. */
-static int sys_read (int fd, void *upage, unsigned read_bytes)
+static int sys_read (int fd, void *buffer, unsigned size)
 {
   struct file *file;
-  if (fd != 0){
+  if (fd != 0) {
     file = fetch_file (fd);
     if (!file)
       return -1;
   }
 
-  int size = read_bytes;
   /* Loading segments of pages like load_segment in process.c */
-  while (read_bytes > 0)
+  void *vaddr = buffer;
+  int bytes_to_read = size;
+  while (bytes_to_read > 0)
   {
-    struct page_table_entry *pte = page_load (upage);
+    struct page_table_entry *pte = page_load (vaddr);
     if (!pte || !pte->writable)
       sys_exit (-1); // buffer is in invalid or read-only memory
-    void *kpage = validate_addr (upage);
+    validate_addr (vaddr);
 
-    size_t page_bytes_left = PGSIZE - pg_ofs (kpage);
-    size_t page_read_bytes = read_bytes < page_bytes_left ? read_bytes : page_bytes_left;
+    int bytes_left_in_page = PGSIZE - pg_ofs (vaddr);
+    int bytes_read_to_page = bytes_to_read < bytes_left_in_page
+        ? bytes_to_read : bytes_left_in_page;
 
-    int read = -1;
-    frame_acquire (pte->fte);
-    lock_acquire (&filesys);
     if (fd == 0) // read from stdinput
     {
-      for (unsigned i = 0; i < page_read_bytes; i++)
+      for (int i = 0; i < bytes_read_to_page; i++)
       {
-        ((uint8_t *) kpage)[i] = input_getc();
-        read++;
+        ((uint8_t *) vaddr)[i] = input_getc();
       }
     }
     else
-      read += file_read (file, kpage, page_read_bytes);
-    lock_release (&filesys);
-    frame_release (pte->fte);
+      file_read (file, vaddr, bytes_read_to_page);
 
-    /* To verify we read the correct amount, not for bytes remaining. */
-    if (read < 0)
-      return -1;
-
-    read_bytes -= page_read_bytes;
-    upage += page_read_bytes;
+    vaddr += bytes_read_to_page;
+    bytes_to_read -= bytes_read_to_page;
   }
 
-  if (size - read_bytes != size)
+  if (bytes_to_read != 0)
     return -1;
   return size;
 }
 
 /* Implementation of SYS_WRITE syscall. */
 static int
-sys_write (int fd, const void *upage, unsigned write_bytes)
+sys_write (int fd, const void *buffer, unsigned size)
 {
   struct file *file;
-  if (fd != 1){
+  if (fd != 1) {
     file = fetch_file (fd);
     if (!file)
       return 0;
   }
 
-  int size = write_bytes;
   /* Loading segments of pages like load_segment in process.c */
-  while (write_bytes > 0)
+  void *vaddr = buffer;
+  int bytes_to_write = size;
+  while (bytes_to_write > 0)
   {
-    struct page_table_entry *pte = page_load (upage);
+    struct page_table_entry *pte = page_load (vaddr);
     if (!pte)
       sys_exit (-1); // buffer is in invalid or read-only memory
-    void *kpage = validate_addr (upage);
+    validate_addr (vaddr);
 
-    size_t page_bytes_left = PGSIZE - pg_ofs (kpage);
-    size_t page_write_bytes = write_bytes < page_bytes_left ? write_bytes : page_bytes_left;
+    int bytes_left_in_page = PGSIZE - pg_ofs (vaddr);
+    int bytes_written_from_page = bytes_to_write < bytes_left_in_page
+        ? bytes_to_write : bytes_left_in_page;
 
-    int write = -1;
-    frame_acquire (pte->fte);
-    lock_acquire (&filesys);
     if (fd == 1) // write to stdout
     {
-      putbuf (kpage, page_write_bytes);
-      write += page_write_bytes;
+      putbuf (vaddr, bytes_written_from_page);
     }
-    else
-      write += file_write (file, kpage, page_write_bytes);
-    lock_release (&filesys);
-    frame_release (pte->fte);
-
-    /* To verify we wrote the correct amount, not for bytes remaining. */
-    if (write < 0)
-      return 0;
-
-    write_bytes -= page_write_bytes;
-    upage += page_write_bytes;
+    else {
+      if (file_write (file, vaddr, bytes_written_from_page) == 0)
+        return 0;
+    }
+ 
+    vaddr += bytes_written_from_page;
+    bytes_to_write -= bytes_written_from_page;
   }
 
-  if (size - write_bytes != size)
+  if (bytes_to_write != 0)
     return 0;
   return size;
 }
@@ -358,9 +336,7 @@ static void
 sys_seek (int fd, unsigned position)
 {
   struct file *file = fetch_file (fd);
-  lock_acquire (&filesys);
   file_seek (file, position);
-  lock_release (&filesys);
 }
 
 /* Implementation of SYS_TELL syscall. */
@@ -368,9 +344,7 @@ static unsigned
 sys_tell (int fd)
 {
   struct file *file = fetch_file (fd);
-  lock_acquire (&filesys);
   unsigned position = file_tell (file);
-  lock_release (&filesys);
   return position;
 }
 
@@ -380,7 +354,6 @@ sys_close (int fd_to_close)
 {
   struct list *fds = &thread_current ()->fds;
   
-  lock_acquire (&filesys);
   if (!list_empty (fds))
   {
     for (struct list_elem *it = list_front (fds); it != list_end (fds); it = list_next (it))
@@ -395,7 +368,6 @@ sys_close (int fd_to_close)
       }
     }
   }
-  lock_release (&filesys);
 }
 
 /* Implementation of SYS_MMAP syscall. */
@@ -508,7 +480,7 @@ fetch_file (int fd_to_find)
 }
 
 /* Check if an address is valid using the methods described on the project page. */
-static void *
+static void
 validate_addr (const void *addr)
 {
   char *ptr = (char*)(addr); // increment through the address one byte at a time
@@ -518,22 +490,7 @@ validate_addr (const void *addr)
       sys_exit (-1); // -1 for memory violations
     ++ptr;
   }
-  return pagedir_get_page (thread_current()->pagedir, addr);
 }
-
-// /* Converts a file name in upage space to a file name in kpage space. */
-// static char *
-// get_kfile_name (const char *ufile_name)
-// {
-//   struct page_table_entry *pte = page_load ((void *) ufile_name);
-//   if (!pte)
-//     sys_exit (-1); // bad file name pointer
-  
-//   size_t size = strlen (ufile_name) < PGSIZE ? strlen (ufile_name) : PGSIZE;
-//   frame_acquire (&pte->fte->lock);
-//   strlcpy (pte->fte->kpage, ufile_name, size);
-//   frame_release (&pte->fte->lock);
-// }
 
 static void
 free_mapping (struct mapping *mapping)
