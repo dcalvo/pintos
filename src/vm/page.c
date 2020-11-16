@@ -178,7 +178,7 @@ page_evict (struct page_table_entry *pte)
   /* Write to swap if necessary. */
   if (!pte->dirty)
     pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage);
-  if (pte->dirty)
+  if (pte->dirty && !pte->swapped)
     page_write (pte);
 
   /* Re-enable page faults for this address. */
