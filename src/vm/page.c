@@ -170,27 +170,25 @@ page_read (struct page_table_entry *pte)
 void
 page_evict (struct page_table_entry *pte)
 {
-  if (pte != NULL && pte->fte == NULL)
-    PANIC ("TRIED TO EVICT ALREADY EVICTED PAGE");
-
   /* Locate the frame victim. */
   if (!pte) {
     pte = frame_victim ();
     frame_acquire (pte->fte);
-  } else
+  } else if (pte->fte)
     frame_acquire (pte->fte);
 
   /* Write to swap if necessary. */
   if (!pte->dirty)
     pte->dirty = pagedir_is_dirty (pte->thread->pagedir, pte->upage);
-  if (pte->dirty)
+  if (pte->dirty && pte->fte)
     page_write (pte);
 
   /* Re-enable page faults for this address. */
   pagedir_clear_page (pte->thread->pagedir, pte->upage);
 
   /* Uninstall the frame. */
-  frame_free (pte->fte);
+  if (pte->fte)
+    frame_free (pte->fte);
   pte->fte = NULL;
 }
 
