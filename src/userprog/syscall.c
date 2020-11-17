@@ -296,7 +296,7 @@ sys_write (int fd, const void *buffer, unsigned size)
   struct file *file;
   if (fd != 1) {
     file = fetch_file (fd);
-    if (!file || file_writable (file))
+    if (!file || !file_writable (file))
       return 0;
   }
 
