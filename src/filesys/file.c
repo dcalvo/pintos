@@ -145,7 +145,7 @@ bool
 file_writable (struct file *file)
 {
   ASSERT (file != NULL);
-  return !file->deny_write;
+  return file_get_inode (file)->deny_write_cnt;
 }
 
 /* Returns the size of FILE in bytes. */
