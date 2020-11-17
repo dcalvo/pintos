@@ -172,13 +172,13 @@ page_evict (struct page_table_entry *pte)
 {
   if (pte != NULL && pte->fte == NULL)
     PANIC ("TRIED TO EVICT ALREADY EVICTED PAGE");
-  frame_acquire (pte->fte);
 
   /* Locate the frame victim. */
   if (!pte) {
     pte = frame_victim ();
     frame_acquire (pte->fte);
-  }
+  } else
+    frame_acquire (pte->fte);
 
   /* Write to swap if necessary. */
   if (!pte->dirty)
