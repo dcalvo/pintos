@@ -289,7 +289,7 @@ load (char *cmdline, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   filesys_acquire ();
-  file = filesys_open (file_name);
+  t->executable = file = filesys_open (file_name);
   filesys_release ();
   if (file == NULL) 
     {

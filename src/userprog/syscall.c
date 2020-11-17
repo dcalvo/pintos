@@ -156,6 +156,8 @@ sys_exit (int status)
     sys_close (fd->fd);
   }
 
+  file_allow_write (t->executable);
+
   struct shared_info *shared_info = t->shared_info;
   if (shared_info)
   {
