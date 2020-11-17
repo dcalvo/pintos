@@ -29,24 +29,117 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct page_table_entry
+{
+  struct thread *thread;          /* Owner thread of the page. */
+  void *upage;                    /* Virtual address. */
+  bool writable;                  /* Writable bit. Set at allocation. */
+  bool accessed;                  /* Accessed bit. Set when read/write. */
+  bool dirty;                     /* Dirty bit. Set when write. */
+
+  bool swapped;                   /* True if page is swapped out. */
+  int sector;                     /* Swap sector page is located at. */
+
+  struct file *file;              /* File page pointer. */
+  off_t file_ofs;                 /* File access offset. */
+  size_t file_bytes;              /* File bytes to read. */
+  bool mapped;                    /* True if mapped. */
+
+  struct frame_table_entry *fte;  /* Associated frame table entry. */
+
+  struct hash_elem hash_elem;     /* Hash element for page table. */
+  struct list_elem list_elem;     /* List element for memory mapping. */
+};
+
+A supplemental page table entry. Holds all necessary information for paging.
+
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for accessing the data
 >> stored in the SPT about a given page.
 
+The SPT is primarily used in all of the page.c code. In particular, the SPT
+was designed around page_load. Page load is directly called from exception.c
+whenever a page fault is encountered. Using page_get, we either return a SPT
+entry or allocate a new one through page_alloc. Page_alloc will associate the
+faulting user address with a new SPT entry along with initializing it in
+page_init.
+
+Once a SPT entry associated with the faulting address is found, the SPT entry
+may be immediately returned if it already installed into a frame. This is known
+through the pte->fte (page_table_entry->frame_table_entry) conenction, which we
+ensure to maintain as processes are spooled up and exited. If the pte->fte is
+null, we will allocate a new frame for the page through frame_alloc. frame_alloc
+mostly uses the SPT for linking the frame table entry to the SPT entry.
+
+After a frame is allocated and tied to the SPT entry, data is read into the
+page by page_read. Page_read utilizes the information in the SPT entry to
+determine which type of read it should perform: a mmap read (mapped bool),
+a file read (swapped bool), or simply create a new zeroed page. After the data
+is loaded into the frame, the page is installed into it by calling
+install_page. This performs the final underlying hardware linkage of the SPT
+entry to the frame table entry by utilizing their internal upage and kpage
+variables.
+
+After a page is allocated, loaded, and installed, the corresponding SPT entry
+is returned to the caller for whatever else they made need. In exception.c,
+a simple comparison is made to determine whether the faulting address was valid
+or if the process should terminate.
+
+This description covers most of the use of the SPT entries, however, it does
+leave out page_evict. On eviction, the SPT entries are utilized to ensure that
+we evict the appropriate frame, write data to swap or mapped files, clear the
+underlying association between page and frame, and finally destroy the
+corresponding frame. 
+
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
+
+SPT entries will essentially update their own values. As in page_evict, if the
+accessed or dirty bit is necessary to perform some operation, we will update
+the SPT entry value by querying the kernel address. As far as accessing frames
+and performing operations with these bits, we avoid the issue by only utilizing
+our own frame table, which is guaranteed to not have a frame entry unless it is
+associated with a page. The maximum size of the frame table is dynamically
+determined from calls to palloc_get_page, and as a result, we designed the
+frame table to never have a frame table entry unless there is a corresponding
+SPT entry (which should be safe and up to date as per above).
 
 ---- SYNCHRONIZATION ----
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
+Synchronization is performed on every read, write, swap, and eviction operation.
+Each frame has its own internal lock to ensure that it can be pinned during
+operations such as a swap. During the operation, frame_acquire will be called
+with the corresponding frame table entry. Additionally, the frame table itself
+has a lock to ensure that operations which view the frame table holistically
+(primarily eviction) will be performed atomically. This approach is relatively
+fast as we only pin frames when data is moving. If two user processes both need
+a new frame, they are free to call frame_alloc simultaneously, but no races
+will arise due to the frame table lock, and then later again races will be
+avoided as the newly allocated frame will be locked during installation.
+
 ---- RATIONALE ----
 
 >> A5: Why did you choose the data structure(s) that you did for
 >> representing virtual-to-physical mappings?
+
+A frame table was an obvious necessity. The rationale for keeping it separate
+from the supplemental page table was mostly to keep a logical separation. The
+separation of the two data structures ensures there is less confusion reading
+the codebase and it more clearly illustrates the pseudo one to many
+relationship a frame might have to pages.
+
+The supplemental page table was the easiest way to consolidate the information
+we needed without introducing greater complexity or implementation hurdles.
+While we could have modified the underlying pagedir system already found in 
+Pintos, we felt that this would overcomplicate the implementation and not
+take advantage of the abstraction that an operating system can offer. Thus, we
+developed our own SPT on top of Pintos' underlying paging system, which simply
+expands upon it. 
 
           PAGING TO AND FROM DISK
           =======================
@@ -61,6 +154,22 @@ FirstName LastName <email@domain.example>
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
+
+Our algorithm for evicting a frame is a modified two-handed clock algorithm.
+Since the decision to use a hash table instead of a list for the frame table
+means that we cannot linearly and deterministically iterate through the table,
+a circular array is not preserved between eviction calls. Instead, we construct
+two hands pointing at some random element in the table, then iterate the first
+hand forward equal to (the size of the table divided by 4). The handspread is
+arbitrary and can be modified easily. Once the hands have 'sweeped' out an area
+of the clock, they perform a normal two-handed clock search for an eviction
+victim. The first, leading hand will clear accessed bits and the second,
+trailing hand will evict the first installed page with a false accessed bit.
+
+Effectively, we maintain a circular array, however, it is randomized between
+each eviction call. We imagine that this impacts the performance, however, we
+don't believe it to be incredibly influential on the eviction runtime as it is
+still quite fast.
 
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
@@ -111,14 +220,55 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct mapping
+  {
+    mapid_t mapid;
+    struct file *file;
+    struct list mapped_pages;
+    struct list_elem elem;
+  };
+
+Data structure for a single mapping. Contains associated file and pages mapped
+to it.
+
+struct thread
+  {
+    ...
+    struct list mappings;               /* List of mappings. */
+    ...
+  };
+
+Updated thread struct to include a list of mapped files.
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how memory mapped files integrate into your virtual
 >> memory subsystem.  Explain how the page fault and eviction
 >> processes differ between swap pages and other pages.
 
+Memory mapped files aren't treated very differently from a normal executable.
+They're lazily allocated upon calling mmap using page_alloc in sequential 
+virtual memory. When one of those virtual memory regions are page faulted, we
+initially treat it as a normal file read. We will read the file into a frame
+and install the page into it. However, a difference does arise during eviction.
+When a page is evicted and its frame data must be written (due to the dirty
+bit), then instead of writing it to swap, we write the data back to the file
+the virtual memory region is mapped to. Similarly, if we must bring that page
+back into a frame, we simply read the same region of the file.
+
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
+
+We do something very similar to loading an executable as in process.c's load().
+We start at the user given address (which we know is a page boundary) and begin
+filling up the page. At the end of that page, we will move our virtual memory
+address forward by one PG_SIZE and check to see if that address is in our SPT.
+If it is, then we know that the user is trying to fit a file that is too large
+for that region of virtual memory and it would overlap in some other user-
+allocated region of virtual memory. The important thing to note is that file
+mappings are treated exactly the same as any other page in our SPT; the primary
+difference is that they have an additional mapping structure which we leverage
+for organization, but fundamentally they're similar to a normal page.
 
 ---- RATIONALE ----
 
@@ -128,6 +278,15 @@ FirstName LastName <email@domain.example>
 >> that much of their implementation can be shared.  Explain why your
 >> implementation either does or does not share much of the code for
 >> the two situations.
+
+As in the previous two responses, almost all of the code is shared. mmap and
+munmap are responsible for the majority of mapping-only code. In page.c, 
+page_write and page_read simply utilize the SPT (and the information set 
+during mmap calls) to determine what operation to perform. The loading,
+eviction, and accessing of mapped regions are exactly the same as normal pages.
+The only difference in the way that they're treated is during eviction or
+reclamation, page_write and page_read will check if it is a mapped region of
+memory and instead read/write from/to a file, rather than swap.
 
           SURVEY QUESTIONS
           ================
