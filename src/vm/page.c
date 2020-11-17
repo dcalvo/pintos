@@ -171,7 +171,7 @@ page_read (struct page_table_entry *pte)
 void
 page_evict (struct page_table_entry *pte)
 {
-  if (!pte->fte)
+  if (pte && !pte->fte)
     return; // already evicted
 
   /* Locate the frame victim. */
