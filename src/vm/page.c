@@ -170,7 +170,7 @@ page_read (struct page_table_entry *pte)
 void
 page_evict (struct page_table_entry *pte)
 {
-  if (pte && !pte->fte)
+  if (pte != NULL && pte->fte == NULL)
     PANIC ("TRIED TO EVICT ALREADY EVICTED PAGE");
   frame_acquire (pte->fte);
 
