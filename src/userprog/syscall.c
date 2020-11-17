@@ -151,6 +151,13 @@ sys_exit (int status)
   struct thread *t = thread_current ();
   printf ("%s: exit(%d)\n", t->name, status);
 
+  while (!list_empty (&t->fds)) {
+    struct fd *fd = list_entry (list_pop_front(&t->fds), struct fd, elem);
+    sys_close (fd->fd);
+  }
+
+  file_allow_write (t->executable);
+
   struct shared_info *shared_info = t->shared_info;
   if (shared_info)
   {
