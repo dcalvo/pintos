@@ -301,7 +301,7 @@ sys_write (int fd, const void *buffer, unsigned size)
   }
 
   /* Loading segments of pages like load_segment in process.c */
-  void *vaddr = buffer;
+  const void *vaddr = buffer;
   int bytes_to_write = size;
   while (bytes_to_write > 0)
   {
