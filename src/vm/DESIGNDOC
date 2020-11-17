@@ -9,7 +9,7 @@
 >> Fill in the names and email addresses of your group members.
 
 David Calvo <dcalvo2@jhu.edu>
-FirstName LastName <email@domain.example>
+Ken Tana <ptanawa1@jhu.edu>
 
 ---- PRELIMINARIES ----
 
@@ -57,6 +57,40 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/**
+ * The frame table is a hash set.
+ */
+struct hash frame_table;
+
+/**
+ * This lock prevents concurrent access to the frame table.
+ */
+struct lock frame_table_lock;
+
+/**
+ * An entry to the frame table.
+ */
+struct frame_table_entry 
+  {
+    void *kpage; // The frame's address in kernel virtual memory.
+    struct thread *thread; // The FTE's thread.
+    struct page_table_entry *pte; // The PTE corresponding to the FTE.
+
+    struct hash_elem hash_elem; // Needed to interact with the frame table.
+    struct lock lock; // A lock to prevent concurrent access to the FTE.
+  };
+
+/**
+ * The swap block.
+ */
+static struct block *swap_block;
+
+/**
+ * A bit array.
+ * Each bit corresponds to a page in the swap block.
+ */
+static struct bitmap *swap_map;
+
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
@@ -66,9 +100,18 @@ FirstName LastName <email@domain.example>
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
+If P tries to obtain a frame and every frame is in use, then
+    1. the FTE of the frame to evict is deleted from the frame table,
+    2. the frame is freed,
+    3. the FTE is freed, and
+    4. the pointer that Q's PTE has to the FTE is set to NULL.
+
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+
+If the user virtual address is within 32 bytes of the stack pointer,
+then a new page will be allocated to extend the stack.
 
 ---- SYNCHRONIZATION ----
 
@@ -77,21 +120,51 @@ FirstName LastName <email@domain.example>
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+To protect the frame table from concurrent modification,
+the frame table has a lock.
+To protect the FTEs from concurrent modification, the FTEs each have a lock.
+
+To prevent deadlock, the processes acquire and release locks in a safe order,
+so that a process P won't hold a lock that a process Q wants to acquire
+while Q holds a lock that P wants to acquire.
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
+
+Right before Q's frame is evicted, its page is removed from Q's page table,
+so that Q cannot access or modify the page during the eviction process.
+
+While P is evicting Q's frame, if
+    1. the OS switches from P to Q and
+    2. Q page faults,
+then Q will see that the FTE associated with the page's PTE is not NULL yet,
+so Q will not allocate a new frame for its page until
+    1. the OS switches from Q to P,
+    2. P evicts Q's frame, and
+    3. P sets Q's FTE to be null.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
 
+While P reads from swap, P holds the lock of its frame's FTE,
+so Q has to wait for P to
+    1. finish reading from swap and
+    2. release the lock
+before it can acquire the lock and evict the frame.
+
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
 >> in user programs), or do you have a mechanism for "locking" frames
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
+
+Before the OS (within a syscall) accesses a page for the first time,
+the OS checks if the page is already loaded.
+If not, then the OS will load the page before accessing it.
 
 ---- RATIONALE ----
 
@@ -101,6 +174,12 @@ FirstName LastName <email@domain.example>
 >> possibility for deadlock but allows for high parallelism.  Explain
 >> where your design falls along this continuum and why you chose to
 >> design it this way.
+
+Our design uses many locks to increase parallelism.
+
+For example, the frame table has a lock and each FTE has a lock.
+Since each process can access a different FTE at the same time,
+the processes can work in parallel.
 
           MEMORY MAPPED FILES
           ===================
