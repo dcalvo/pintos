@@ -64,6 +64,7 @@ page_load (const void *fault_addr)
 
   /* Load data into the page. */
   pte->fte = fte;
+  frame_acquire (fte);
   if (!page_read (pte)) {
     frame_free (fte);
     pte->fte = NULL;
@@ -71,9 +72,7 @@ page_load (const void *fault_addr)
   }
 
   /* Install the page into frame. */
-  frame_acquire (fte);
   if (!install_page (pte->upage, fte->kpage, pte->writable)) {
-    frame_release (fte);
     frame_free (fte);
     pte->fte = NULL;
     return NULL;
@@ -149,21 +148,21 @@ page_init (struct page_table_entry *pte)
 static bool
 page_read (struct page_table_entry *pte)
 {
+  ASSERT (pte != NULL);
+  ASSERT (pte->fte != NULL);
+  ASSERT (lock_held_by_current_thread (&pte->fte->lock));
   struct frame_table_entry *fte = pte->fte;
-  frame_acquire (fte);
   if (pte->swapped)
     swap_read (fte);
   else if (pte->file) {
     /* Load from file. */
     if (file_read_at (pte->file, fte->kpage, pte->file_bytes, pte->file_ofs)
         != (int) pte->file_bytes) {
-      frame_release (fte);
       return false;
     }
     memset (fte->kpage + pte->file_bytes, 0, (PGSIZE - pte->file_bytes));
   } else
     memset (fte->kpage, 0, PGSIZE);
-  frame_release (fte);
   return true;
 }
 
@@ -172,11 +171,14 @@ void
 page_evict (struct page_table_entry *pte)
 {
   if (pte && !pte->fte)
-    return; // already evicted
+    PANIC ("TRIED TO EVICT ALREADY EVICTED PAGE");
+  frame_acquire (pte->fte);
 
   /* Locate the frame victim. */
-  if (!pte)
+  if (!pte) {
     pte = frame_victim ();
+    frame_acquire (pte->fte);
+  }
 
   /* Write to swap if necessary. */
   if (!pte->dirty)
@@ -188,8 +190,7 @@ page_evict (struct page_table_entry *pte)
   pagedir_clear_page (pte->thread->pagedir, pte->upage);
 
   /* Uninstall the frame. */
-  if (pte->fte)
-    frame_free (pte->fte);
+  frame_free (pte->fte);
   pte->fte = NULL;
 }
 
@@ -197,11 +198,12 @@ page_evict (struct page_table_entry *pte)
 static void
 page_write (struct page_table_entry *pte)
 {
-  frame_acquire (pte->fte);
+  ASSERT (pte != NULL);
+  ASSERT (pte->fte != NULL);
+  ASSERT (lock_held_by_current_thread (&pte->fte->lock));
   if (pte->mapped && pte->file) {
     file_write_at (pte->file, pte->fte->kpage, pte->file_bytes, pte->file_ofs);
     pte->mapped = false;
   } else
     swap_write (pte->fte);
-  frame_release (pte->fte);
 }

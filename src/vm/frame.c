@@ -65,7 +65,7 @@ frame_alloc (struct page_table_entry *pte)
 void
 frame_free (struct frame_table_entry *fte)
 {
-  frame_acquire (fte);
+  ASSERT (lock_held_by_current_thread (&fte->lock));
   lock_acquire (&frame_table_lock);
 
   hash_delete (&frame_table, &fte->hash_elem);
