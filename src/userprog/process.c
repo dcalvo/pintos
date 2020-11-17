@@ -138,7 +138,7 @@ process_wait (tid_t child_tid)
 
   child->is_being_waited_upon = true;
 
-  while (!child->has_exited);
+  sema_down (&child->exited);
 
   /* Child is being destroyed. */
   list_remove (&child->elem);

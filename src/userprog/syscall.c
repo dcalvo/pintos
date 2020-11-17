@@ -156,6 +156,7 @@ sys_exit (int status)
   {
     shared_info->has_exited = true;
     shared_info->exit_code = status;
+    sema_up (&shared_info->exited);
   }
 
   // use hash_clear to destroy each frame

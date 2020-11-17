@@ -207,6 +207,7 @@ thread_create (const char *name, int priority,
   shared_info->is_being_waited_upon = false;
   shared_info->has_exited = false;
   shared_info->exit_code = -1;
+  sema_init (&shared_info->exited, 0);
   t->shared_info = shared_info;
   list_push_back(&thread_current ()->children, &shared_info->elem);
   #endif

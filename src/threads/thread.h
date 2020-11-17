@@ -32,6 +32,7 @@ struct shared_info
     bool has_exited;                /* If thread has exited. */
     int exit_code;                  /* Integer representing how the process exited. */
     struct list_elem elem;          /* List element. */
+    struct semaphore exited;        /* Up'd when exited. */
   };
 
 /* A kernel thread or user process.
