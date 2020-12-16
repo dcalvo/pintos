@@ -4,6 +4,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +25,16 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+struct shared_info
+  {
+    tid_t tid;                      /* Thread identifier. */
+    bool is_being_waited_upon;      /* Is there a thread already waiting on this one? */
+    bool has_exited;                /* If thread has exited. */
+    int exit_code;                  /* Integer representing how the process exited. */
+    struct list_elem elem;          /* List element. */
+    struct semaphore exited;        /* Up'd when exited. */
+  };
 
 /* A kernel thread or user process.
 
@@ -89,9 +101,18 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+    struct file *executable;            /* Underlying executable file. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    struct shared_info *shared_info;    /* Info struct about this thread. */
+    struct list children;               /* Child processes. */
+    struct list fds;                    /* List of file descriptors. */
+
+    struct hash page_table;             /* Hash table for supplemental page table. */
+    void *esp;                          /* esp register value at fault time. */
+    struct list mappings;               /* List of mappings. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

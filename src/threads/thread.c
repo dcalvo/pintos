@@ -198,6 +198,20 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  /* Initialize shared_info struct. */
+  #ifdef USERPROG
+  struct shared_info *shared_info = palloc_get_page (0);
+  if (!shared_info)
+    return TID_ERROR;
+  shared_info->tid = tid;
+  shared_info->is_being_waited_upon = false;
+  shared_info->has_exited = false;
+  shared_info->exit_code = -1;
+  sema_init (&shared_info->exited, 0);
+  t->shared_info = shared_info;
+  list_push_back(&thread_current ()->children, &shared_info->elem);
+  #endif
+
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -462,6 +476,9 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  list_init (&t->fds);
+  list_init (&t->children);
+  list_init (&t->mappings);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
